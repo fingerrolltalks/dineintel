@@ -4,7 +4,9 @@
 
 :root {
   color-scheme: dark;
-  background: #050607;
+  background: #050816;
+  --neon-lime: #cfff00;
+  --acid-lime: #a3ff12;
 }
 
 * {
@@ -18,11 +20,13 @@ html {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at 18% 12%, rgba(198, 255, 0, 0.12), transparent 26rem),
-    radial-gradient(circle at 82% 6%, rgba(255, 191, 49, 0.13), transparent 22rem),
-    linear-gradient(180deg, #050607 0%, #080b0d 46%, #050607 100%);
-  color: #f7fff0;
+    radial-gradient(circle at 18% 14%, rgba(198, 255, 0, 0.14), transparent 30rem),
+    radial-gradient(circle at 82% 12%, rgba(183, 255, 0, 0.14), transparent 28rem),
+    linear-gradient(180deg, #050816 0%, #040611 52%, #050816 100%);
+  color: #f8fafc;
   font-family: "Satoshi", "Avenir Next", "Segoe UI", sans-serif;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
@@ -31,14 +35,22 @@ input {
 }
 
 .glass {
-  background: linear-gradient(145deg, rgba(17, 22, 26, 0.86), rgba(9, 12, 14, 0.72));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+  background: linear-gradient(145deg, rgba(14, 19, 32, 0.88), rgba(4, 6, 17, 0.76));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.055);
   backdrop-filter: blur(20px);
 }
 
 .scan-line {
   background: linear-gradient(90deg, transparent, rgba(198, 255, 0, 0.9), transparent);
+}
+
+.neon-headline {
+  background: linear-gradient(180deg, #efff93 0%, var(--neon-lime) 38%, var(--acid-lime) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 18px rgba(198, 255, 0, 0.26));
 }
 
 .scan-grid {
@@ -54,6 +66,40 @@ input {
   will-change: transform, opacity;
 }
 
+.mesh-layer {
+  background:
+    radial-gradient(circle at 78% 18%, rgba(198, 255, 0, 0.16), transparent 20rem),
+    radial-gradient(circle at 72% 48%, rgba(164, 255, 18, 0.08), transparent 28rem),
+    radial-gradient(circle at 36% 78%, rgba(198, 255, 0, 0.065), transparent 22rem),
+    linear-gradient(115deg, transparent 0%, rgba(198, 255, 0, 0.038) 48%, transparent 64%);
+  animation: mesh-drift 18s ease-in-out infinite alternate;
+}
+
+.beam-layer {
+  background:
+    linear-gradient(132deg, transparent 0 43%, rgba(207, 255, 0, 0.34) 48%, transparent 53%),
+    linear-gradient(155deg, transparent 0 54%, rgba(198, 255, 0, 0.10) 58%, transparent 64%);
+  filter: blur(1.2px);
+  opacity: 0.56;
+}
+
+.noise-layer {
+  background-image:
+    linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.05), transparent),
+    repeating-radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.26) 0 1px, transparent 1px 7px);
+}
+
+.floor-grid {
+  background-image:
+    linear-gradient(rgba(198, 255, 0, 0.085) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(198, 255, 0, 0.085) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 28%, transparent 82%);
+  opacity: 0.26;
+  transform: perspective(760px) rotateX(66deg) translateY(-90px) scale(1.2);
+  transform-origin: top center;
+}
+
 @keyframes ambient-drift {
   from {
     opacity: 0.72;
@@ -63,6 +109,16 @@ input {
   to {
     opacity: 0.92;
     transform: translate3d(-10px, 8px, 0) scale(1.03);
+  }
+}
+
+@keyframes mesh-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(-18px, 14px, 0) scale(1.04);
   }
 }
 

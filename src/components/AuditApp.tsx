@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Trophy,
   Users,
+  Zap,
 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { generateAudit, type AuditInput, type AuditResult } from "@/lib/audit";
@@ -85,125 +86,148 @@ export default function AuditApp() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-4 py-5 text-white sm:px-6 lg:px-8">
+    <main className="relative min-h-screen overflow-hidden px-4 py-5 text-white antialiased sm:px-6 lg:px-8">
       <AmbientFood />
-      <nav className="relative z-10 mx-auto flex max-w-6xl items-center justify-between py-3">
+      <nav className="relative z-10 mx-auto flex max-w-7xl items-center justify-between py-3">
         <div className="flex items-center gap-3.5">
-          <div className="grid size-11 place-items-center rounded-2xl bg-lime text-ink shadow-glow transition duration-300 hover:rotate-[-4deg] hover:scale-105">
+          <div className="grid size-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#9DFF00)] text-ink shadow-[0_0_32px_rgba(198,255,0,.42)] transition duration-300 hover:rotate-[-4deg] hover:scale-105">
             <ChefHat size={23} />
           </div>
           <span className="text-2xl font-black tracking-[-0.04em]">DineIntel</span>
         </div>
-        <a href="#audit" className="rounded-full border border-white/15 bg-white/[0.035] px-4 py-2 text-sm font-bold text-white/80 transition hover:border-lime/60 hover:bg-lime/10 hover:text-white">
+        <a href="#audit" className="rounded-full border border-lime/25 bg-white/[0.04] px-5 py-2.5 text-sm font-black text-white/86 shadow-[inset_0_1px_0_rgba(255,255,255,.07)] transition hover:border-lime/65 hover:bg-lime/10 hover:text-white">
           Scan now
         </a>
       </nav>
 
-      <section className="relative z-10 mx-auto grid max-w-6xl items-center gap-9 pb-14 pt-10 sm:pt-14 lg:grid-cols-[1.02fr_.98fr] lg:pb-20 lg:pt-20">
+      <section className="relative z-10 mx-auto grid max-w-7xl items-center gap-9 pb-14 pt-10 sm:pt-16 lg:grid-cols-[1fr_1.02fr] lg:pb-20 lg:pt-16 xl:grid-cols-[.96fr_1.08fr]">
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-lime/20 bg-lime/[0.06] px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-lime">
-            <span className="size-2 rounded-full bg-lime shadow-glow" />
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-lime/30 bg-lime/[0.07] px-4 py-2 text-[11px] font-black uppercase tracking-[0.11em] text-lime shadow-[0_0_28px_rgba(198,255,0,.12)]">
+            <span className="size-2 rounded-full bg-lime shadow-[0_0_16px_rgba(198,255,0,.9)]" />
             Free 60-second growth scan
           </div>
-          <h1 className="max-w-4xl text-5xl font-black leading-[0.98] tracking-[-0.058em] text-white sm:text-6xl lg:text-7xl">
-            Find what’s quietly costing your restaurant customers.
+          <h1 className="max-w-5xl text-[3.15rem] font-extrabold uppercase leading-[0.94] tracking-[-0.062em] text-white sm:text-[4.75rem] lg:text-[4.25rem] xl:text-[5.45rem]">
+            Your restaurant is
+            <span className="neon-headline block">leaking revenue.</span>
           </h1>
-          <p className="mt-6 max-w-xl text-base leading-7 text-white/68 sm:text-lg sm:leading-8">
-            DineIntel turns your public web presence into a sharp growth report: what guests see, where they hesitate, and which fixes can recover missed revenue fastest.
+          <p className="mt-6 max-w-[41rem] text-base leading-7 text-white/74 sm:text-lg sm:leading-8">
+            DineIntel scans your restaurant’s public presence to identify hidden customer friction, trust gaps, and lost revenue opportunities before guests choose somewhere else.
           </p>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <a href="#audit" className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-lime px-5 py-4 font-black text-ink shadow-glow transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_55px_rgba(198,255,0,.32)]">
-              Run free audit
-              <ArrowRight className="transition group-hover:translate-x-1" size={19} />
-            </a>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-5 py-4 text-sm leading-6 text-white/62">
-              No login. No card. Report first.
-            </div>
-          </div>
-          <div className="mt-8 grid gap-3 text-sm text-white/70 sm:grid-cols-3">
-            {["Visibility leaks", "Review trust gaps", "Ordering friction"].map((item) => (
-              <span key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 transition hover:-translate-y-0.5 hover:border-lime/30 hover:bg-lime/[0.05]">
-                {item}
-              </span>
+          <div className="mt-7 grid gap-3 sm:grid-cols-3">
+            {[
+              ["Find hidden leaks", "Before they cost you"],
+              ["See what guests notice", "First"],
+              ["Fix issues that", "Recover revenue"],
+            ].map(([title, body]) => (
+              <div key={title} className="group rounded-2xl border border-white/[0.075] bg-white/[0.035] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,.05)] transition hover:-translate-y-0.5 hover:border-lime/30 hover:bg-lime/[0.05]">
+                <div className="mb-2 grid size-8 place-items-center rounded-xl bg-lime/10 text-lime">
+                  <Zap size={16} />
+                </div>
+                <p className="text-xs font-black leading-5 text-white">{title}</p>
+                <p className="text-xs leading-5 text-white/52">{body}</p>
+              </div>
             ))}
           </div>
-          <div className="mt-6 max-w-xl rounded-3xl border border-gold/15 bg-gold/[0.04] p-4 text-sm leading-6 text-white/70">
-            <span className="font-black text-gold">Example insight:</span> Your menu may be hard to find on mobile, causing guests to leave before ordering.
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <a href="#audit" className="group inline-flex items-center justify-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-7 py-5 text-base font-black uppercase tracking-[-0.015em] text-ink shadow-[0_0_48px_rgba(198,255,0,.34)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_0_72px_rgba(198,255,0,.46)]">
+              Scan my restaurant
+              <ArrowRight className="transition group-hover:translate-x-1.5" size={21} />
+            </a>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-5 py-4 text-sm leading-6 text-white/64">
+              No login. No card. 100% free.
+            </div>
+          </div>
+          <div className="mt-7 flex flex-wrap items-center gap-3 text-sm text-white/70">
+            <div className="flex -space-x-2">
+              {["A", "B", "C"].map((item) => (
+                <span key={item} className="grid size-8 place-items-center rounded-full border border-black bg-gradient-to-br from-white to-lime/50 text-xs font-black text-ink">
+                  {item}
+                </span>
+              ))}
+            </div>
+            <span className="text-lime">★★★★★</span>
+            <span>2,341 restaurants scanned this week</span>
+          </div>
+          <div className="mt-6 max-w-xl rounded-3xl border border-lime/15 bg-lime/[0.035] p-4 text-sm leading-6 text-white/70 shadow-[0_0_28px_rgba(198,255,0,.07)]">
+            <span className="font-black text-lime">Example insight:</span> Your menu may be hard to find on mobile, causing guests to leave before ordering.
           </div>
         </motion.div>
 
-        <section id="audit" className="glass relative overflow-hidden rounded-[2rem] p-6 ring-1 ring-lime/5 transition duration-500 hover:ring-lime/20 sm:p-8">
-          <AnimatePresence mode="wait">
-            {phase === "form" && (
-              <motion.form
-                key="form"
-                onSubmit={submitAudit}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="space-y-5"
-              >
-                <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-lime">Instant audit</p>
-                  <h2 className="mt-2 text-2xl font-black tracking-tight">Find the leaks guests notice first</h2>
-                  <p className="mt-2 text-sm leading-6 text-white/58">Enter the public links customers see before they decide where to eat, order, or book.</p>
-                </div>
-                <Input label="Restaurant Name" value={form.restaurant} onChange={(restaurant) => setForm({ ...form, restaurant })} placeholder="Marlow’s Bistro" required />
-                <Input label="Website" value={form.website} onChange={(website) => setForm({ ...form, website })} placeholder="https://restaurant.com" required />
-                <Input label="Instagram" value={form.instagram} onChange={(instagram) => setForm({ ...form, instagram })} placeholder="@restaurant" required />
-                <Input label="TikTok optional" value={form.tiktok || ""} onChange={(tiktok) => setForm({ ...form, tiktok })} placeholder="@restaurant" />
-                <button className="group mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-lime px-5 py-4 font-black text-ink shadow-glow transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_62px_rgba(198,255,0,.34)] focus:outline-none focus:ring-4 focus:ring-lime/25">
-                  Reveal hidden growth leaks
-                  <ArrowRight className="transition group-hover:translate-x-1" size={20} />
-                </button>
-                <p className="text-center text-xs leading-5 text-white/42">Private preview. No login, no subscription, no POS connection.</p>
-              </motion.form>
-            )}
-
-            {phase === "scan" && (
-              <motion.div key="scan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-[560px] py-2">
-                <div className="relative overflow-hidden rounded-[1.8rem] border border-lime/15 bg-black/24 p-5">
-                  <div className="scan-grid absolute inset-0 opacity-35" />
-                  <div className="relative mx-auto grid size-56 place-items-center rounded-full border border-lime/25 bg-lime/[0.03] shadow-glow sm:size-64">
-                    <motion.div className="absolute h-px w-56 scan-line sm:w-64" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2.4, ease: "linear" }} />
-                    <motion.div className="absolute size-40 rounded-full border border-lime/15" animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.15, 0.45, 0.15] }} transition={{ repeat: Infinity, duration: 2.8 }} />
-                    <div className="grid size-32 place-items-center rounded-full border border-white/10 bg-white/[0.05]">
-                      <Sparkles className="text-lime" size={42} />
-                    </div>
-                    <div className="absolute bottom-8 rounded-full border border-gold/20 bg-gold/[0.08] px-3 py-1 text-xs font-black text-gold">
-                      {Math.min(96, 18 + step * 19)}% analyzed
-                    </div>
+        <div className="grid gap-5 xl:grid-cols-[.84fr_1.08fr]">
+          <RevenueLeakCard />
+          <section id="audit" className="glass relative overflow-hidden rounded-[1.65rem] p-6 ring-1 ring-lime/12 transition duration-500 hover:-translate-y-1 hover:ring-lime/28 sm:p-7">
+            <AnimatePresence mode="wait">
+              {phase === "form" && (
+                <motion.form
+                  key="form"
+                  onSubmit={submitAudit}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-5"
+                >
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-lime">Instant audit</p>
+                    <h2 className="mt-2 text-3xl font-black tracking-[-0.04em]">See what guests notice first.</h2>
+                    <p className="mt-3 text-sm leading-6 text-white/62">Enter your details and we’ll scan your public links to find hidden growth leaks in 60 seconds.</p>
                   </div>
-                  <div className="relative mt-5 text-center">
-                    <motion.p key={scanSteps[step].label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-xl font-black tracking-tight">
-                      {scanSteps[step].label}
-                    </motion.p>
-                    <p className="mt-2 text-sm leading-6 text-white/55">{scanSteps[step].detail}</p>
-                  </div>
-                </div>
+                  <Input label="Restaurant Name" value={form.restaurant} onChange={(restaurant) => setForm({ ...form, restaurant })} placeholder="Marlow’s Bistro" required />
+                  <Input label="Website" value={form.website} onChange={(website) => setForm({ ...form, website })} placeholder="https://restaurant.com" required />
+                  <Input label="Instagram" value={form.instagram} onChange={(instagram) => setForm({ ...form, instagram })} placeholder="@restaurant" required />
+                  <Input label="TikTok optional" value={form.tiktok || ""} onChange={(tiktok) => setForm({ ...form, tiktok })} placeholder="@restaurant" />
+                  <button className="group mt-3 flex w-full items-center justify-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-5 text-base font-black uppercase text-ink shadow-[0_0_46px_rgba(198,255,0,.34)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_0_72px_rgba(198,255,0,.46)] focus:outline-none focus:ring-4 focus:ring-lime/25">
+                    Reveal my leaks
+                    <ArrowRight className="transition group-hover:translate-x-1.5" size={21} />
+                  </button>
+                  <p className="text-center text-xs leading-5 text-white/44">Private preview. No login. No subscription.</p>
+                </motion.form>
+              )}
 
-                <div className="mt-5 space-y-3">
-                  {scanSteps.map((item, index) => (
-                    <motion.div
-                      key={item.label}
-                      animate={{ opacity: index <= step ? 1 : 0.38, x: index === step ? 6 : 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="group flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 transition hover:border-lime/20 hover:bg-white/[0.06]"
-                    >
-                      <div>
-                        <span className="text-sm font-bold">{item.label}</span>
-                        <p className="mt-1 hidden text-xs text-white/42 sm:block">{item.detail}</p>
+              {phase === "scan" && (
+                <motion.div key="scan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-[560px] py-2">
+                  <div className="relative overflow-hidden rounded-[1.8rem] border border-lime/15 bg-black/24 p-5">
+                    <div className="scan-grid absolute inset-0 opacity-35" />
+                    <div className="relative mx-auto grid size-56 place-items-center rounded-full border border-lime/25 bg-lime/[0.03] shadow-glow sm:size-64">
+                      <motion.div className="absolute h-px w-56 scan-line sm:w-64" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2.4, ease: "linear" }} />
+                      <motion.div className="absolute size-40 rounded-full border border-lime/15" animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.15, 0.45, 0.15] }} transition={{ repeat: Infinity, duration: 2.8 }} />
+                      <div className="grid size-32 place-items-center rounded-full border border-white/10 bg-white/[0.05]">
+                        <Sparkles className="text-lime" size={42} />
                       </div>
-                      {index < step ? <CheckCircle2 className="text-lime" size={19} /> : <Clock3 className="text-gold" size={18} />}
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
+                      <div className="absolute bottom-8 rounded-full border border-lime/20 bg-lime/[0.08] px-3 py-1 text-xs font-black text-lime">
+                        {Math.min(96, 18 + step * 19)}% analyzed
+                      </div>
+                    </div>
+                    <div className="relative mt-5 text-center">
+                      <motion.p key={scanSteps[step].label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-xl font-black tracking-tight">
+                        {scanSteps[step].label}
+                      </motion.p>
+                      <p className="mt-2 text-sm leading-6 text-white/55">{scanSteps[step].detail}</p>
+                    </div>
+                  </div>
 
-            {phase === "results" && result && <Results result={result} restart={() => setPhase("form")} />}
-          </AnimatePresence>
-        </section>
+                  <div className="mt-5 space-y-3">
+                    {scanSteps.map((item, index) => (
+                      <motion.div
+                        key={item.label}
+                        animate={{ opacity: index <= step ? 1 : 0.38, x: index === step ? 6 : 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="group flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 transition hover:border-lime/20 hover:bg-white/[0.06]"
+                      >
+                        <div>
+                          <span className="text-sm font-bold">{item.label}</span>
+                          <p className="mt-1 hidden text-xs text-white/42 sm:block">{item.detail}</p>
+                        </div>
+                        {index < step ? <CheckCircle2 className="text-lime" size={19} /> : <Clock3 className="text-lime" size={18} />}
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {phase === "results" && result && <Results result={result} restart={() => setPhase("form")} />}
+            </AnimatePresence>
+          </section>
+        </div>
       </section>
 
       <TrustStrip />
@@ -226,22 +250,91 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="mb-2.5 block text-sm font-bold text-white/72">{label}</span>
+      <span className="mb-2.5 block text-xs font-black uppercase tracking-[0.04em] text-white/76">{label}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required={required}
-        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-[1.05rem] text-white outline-none transition duration-300 placeholder:text-white/28 hover:border-white/18 focus:border-lime/70 focus:shadow-glow"
+        className="w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-[1.05rem] text-white outline-none transition duration-300 placeholder:text-white/36 hover:border-lime/30 focus:border-lime/80 focus:shadow-[0_0_34px_rgba(198,255,0,.18)]"
       />
     </label>
+  );
+}
+
+function RevenueLeakCard() {
+  const leaks = [
+    ["Slow mobile experience", "-$1,246/mo"],
+    ["Confusing menu layout", "-$876/mo"],
+    ["Weak trust signals", "-$643/mo"],
+  ];
+
+  return (
+    <motion.aside
+      initial={{ opacity: 0, y: 22 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.12, duration: 0.7 }}
+      className="glass relative overflow-hidden rounded-[1.65rem] border-lime/24 p-5 shadow-[0_0_48px_rgba(198,255,0,.11)] xl:min-h-[500px]"
+    >
+      <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-lime/70 to-transparent" />
+      <div className="scan-grid absolute inset-0 opacity-20" />
+      <div className="relative">
+        <p className="text-center text-xs font-black uppercase tracking-[0.14em] text-white/86">Revenue Leak Score</p>
+        <div className="relative mx-auto mt-6 grid size-52 place-items-center">
+          <div className="absolute inset-0 rounded-full bg-lime/10 blur-3xl" />
+          <svg className="absolute inset-0 -rotate-[130deg]" viewBox="0 0 220 220" aria-hidden="true">
+            <circle cx="110" cy="110" r="82" stroke="rgba(255,255,255,.10)" strokeWidth="18" fill="none" strokeLinecap="round" strokeDasharray="386 520" />
+            <motion.circle
+              cx="110"
+              cy="110"
+              r="82"
+              stroke="#C6FF00"
+              strokeWidth="18"
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray="196 520"
+              initial={{ strokeDashoffset: 196 }}
+              animate={{ strokeDashoffset: 0 }}
+              transition={{ duration: 1.2, ease: "easeOut" }}
+            />
+          </svg>
+          <div className="text-center">
+            <div className="text-6xl font-extrabold tracking-[-0.07em] text-white">37%</div>
+            <div className="mt-1 text-sm font-black uppercase tracking-[0.075em] text-lime">Leak detected</div>
+            <div className="mx-auto mt-3 w-fit rounded-full border border-red-400/25 bg-red-500/14 px-3 py-1 text-xs font-black text-red-300">High Impact</div>
+          </div>
+        </div>
+
+        <div className="mt-7 border-t border-white/[0.075] pt-5">
+          <p className="mb-3 text-xs font-black uppercase tracking-[0.12em] text-white/70">Top leaks found</p>
+          <div className="space-y-3">
+            {leaks.map(([label, loss]) => (
+              <div key={label} className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.07] bg-black/24 px-3 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-7 place-items-center rounded-lg bg-lime/12 text-lime">
+                    <AlertTriangle size={14} />
+                  </span>
+                  <span className="text-sm font-bold text-white/86">{label}</span>
+                </div>
+                <span className="shrink-0 text-xs font-black text-red-300">{loss}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button className="group mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/[0.075] bg-white/[0.03] px-5 py-4 text-sm font-black text-white transition hover:border-lime/35 hover:bg-lime/[0.07]">
+          View full report
+          <ArrowRight className="transition group-hover:translate-x-1" size={17} />
+        </button>
+      </div>
+    </motion.aside>
   );
 }
 
 function Results({ result, restart }: { result: AuditResult; restart: () => void }) {
   return (
     <motion.div key="results" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="space-y-5">
-      <div className="relative overflow-hidden rounded-[1.8rem] border border-lime/20 bg-[linear-gradient(145deg,rgba(198,255,0,.11),rgba(255,191,49,.055),rgba(255,255,255,.035))] p-5 shadow-glow">
+      <div className="relative overflow-hidden rounded-[1.65rem] border border-lime/18 bg-[linear-gradient(145deg,rgba(198,255,0,.10),rgba(183,255,0,.045),rgba(255,255,255,.03))] p-5 shadow-glow">
         <GoldBurst />
         <div className="relative">
           <p className="text-xs font-black uppercase tracking-[0.24em] text-lime">Growth report unlocked</p>
@@ -359,9 +452,13 @@ function ScoreRing({ score }: { score: number }) {
 function AmbientFood() {
   return (
     <>
-      <div className="pointer-events-none absolute -left-16 top-32 size-72 rounded-full bg-[radial-gradient(circle,#273015,transparent_67%)] blur-2xl" />
-      <div className="ambient-drift pointer-events-none absolute right-0 top-24 hidden h-[520px] w-[420px] rounded-l-[4rem] border border-white/10 bg-[linear-gradient(145deg,rgba(255,191,49,.12),rgba(198,255,0,.07),rgba(255,255,255,.025))] blur-[1px] lg:block" />
-      <div className="ambient-drift pointer-events-none absolute bottom-24 right-16 hidden size-40 rounded-full border border-gold/15 bg-gold/[0.025] shadow-[0_0_44px_rgba(255,191,49,.18)] lg:block" />
+      <div className="noise-layer pointer-events-none absolute inset-0 opacity-[0.045]" />
+      <div className="mesh-layer pointer-events-none absolute inset-0" />
+      <div className="floor-grid pointer-events-none absolute inset-x-0 top-[24rem] hidden h-[28rem] lg:block" />
+      <div className="pointer-events-none absolute -left-24 top-20 size-[34rem] rounded-full bg-[radial-gradient(circle,rgba(198,255,0,.12),transparent_68%)] blur-3xl" />
+      <div className="ambient-drift pointer-events-none absolute right-0 top-6 hidden h-[620px] w-[560px] rounded-l-[5rem] border border-lime/5 bg-[linear-gradient(145deg,rgba(198,255,0,.095),rgba(183,255,0,.045),rgba(255,255,255,.014))] blur-[1px] lg:block" />
+      <div className="beam-layer pointer-events-none absolute right-0 top-0 hidden h-[620px] w-[620px] lg:block" />
+      <div className="ambient-drift pointer-events-none absolute bottom-20 right-12 hidden size-44 rounded-full border border-lime/15 bg-lime/[0.025] shadow-[0_0_46px_rgba(198,255,0,.22)] lg:block" />
     </>
   );
 }
@@ -383,15 +480,20 @@ function GoldBurst() {
 }
 
 function TrustStrip() {
+  const cards = [
+    { title: "Visibility", body: "Find the local search gaps hiding demand.", Icon: Globe2 },
+    { title: "Conversion", body: "Turn mobile visitors into orders faster.", Icon: MousePointerClick },
+    { title: "Retention", body: "Capture guests before marketplaces do.", Icon: Users },
+  ];
+
   return (
-    <section className="relative z-10 mx-auto grid max-w-6xl gap-4 pb-10 sm:grid-cols-3">
-      {[
-        ["Visibility", "Find the local search gaps hiding demand."],
-        ["Conversion", "Turn mobile visitors into orders faster."],
-        ["Retention", "Capture guests before marketplaces do."],
-      ].map(([title, body]) => (
-        <div key={title} className="rounded-3xl border border-white/10 bg-white/[0.035] p-5 transition duration-300 hover:-translate-y-0.5 hover:border-lime/25 hover:bg-white/[0.055]">
-          <h3 className="font-black">{title}</h3>
+    <section className="relative z-10 mx-auto grid max-w-7xl gap-4 pb-10 sm:grid-cols-3">
+      {cards.map(({ title, body, Icon }) => (
+        <div key={title} className="group rounded-3xl border border-white/10 bg-[linear-gradient(145deg,rgba(14,19,32,.86),rgba(255,255,255,.035))] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,.06)] transition duration-300 hover:-translate-y-1 hover:border-lime/35 hover:bg-lime/[0.055] hover:shadow-[0_0_42px_rgba(198,255,0,.12)]">
+          <div className="mb-5 grid size-11 place-items-center rounded-2xl bg-lime/10 text-lime ring-1 ring-lime/20 transition group-hover:scale-105 group-hover:bg-lime group-hover:text-ink">
+            <Icon size={21} />
+          </div>
+          <h3 className="text-xl font-black tracking-[-0.03em]">{title}</h3>
           <p className="mt-2 text-sm leading-6 text-white/55">{body}</p>
         </div>
       ))}
