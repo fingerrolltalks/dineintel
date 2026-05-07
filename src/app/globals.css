@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  background: #050607;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(198, 255, 0, 0.12), transparent 26rem),
+    radial-gradient(circle at 82% 6%, rgba(255, 191, 49, 0.13), transparent 22rem),
+    linear-gradient(180deg, #050607 0%, #080b0d 46%, #050607 100%);
+  color: #f7fff0;
+  font-family: "Satoshi", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.glass {
+  background: linear-gradient(145deg, rgba(17, 22, 26, 0.86), rgba(9, 12, 14, 0.72));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(20px);
+}
+
+.scan-line {
+  background: linear-gradient(90deg, transparent, rgba(198, 255, 0, 0.9), transparent);
+}
+
+.scan-grid {
+  background-image:
+    linear-gradient(rgba(198, 255, 0, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(198, 255, 0, 0.08) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle, black 0%, transparent 72%);
+}
+
+.ambient-drift {
+  animation: ambient-drift 12s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+@keyframes ambient-drift {
+  from {
+    opacity: 0.72;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    opacity: 0.92;
+    transform: translate3d(-10px, 8px, 0) scale(1.03);
+  }
+}
+
+::selection {
+  background: rgba(198, 255, 0, 0.32);
+  color: white;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
