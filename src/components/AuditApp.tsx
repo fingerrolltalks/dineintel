@@ -7,9 +7,12 @@ import {
   CheckCircle2,
   ChefHat,
   Clock3,
+  CreditCard,
   Flame,
   Globe2,
   MousePointerClick,
+  Loader2,
+  ShieldCheck,
   Sparkles,
   Star,
   TrendingUp,
@@ -17,9 +20,10 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent, HTMLAttributes, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { generateAudit, type AuditInput, type AuditResult } from "@/lib/audit";
+import { isReportUnlocked, loadReportResult, saveReportResult, setReportUnlocked } from "@/lib/report-session";
 
 const scanSteps = [
   {
@@ -52,16 +56,133 @@ const categoryIcons = {
   Retention: Users,
 };
 
+const premiumSections = [
+  {
+    title: "Full AI Growth Plan",
+    teaser: "See the exact 30-day sequence to recover lost orders and bookings.",
+    summary: "A prioritized rollout that separates urgent fixes from high-leverage growth moves.",
+    bullets: ["Week 1 fixes are front-loaded", "Each task is ranked by impact and speed"],
+  },
+  {
+    title: "Website Conversion Fixes",
+    teaser: "Pinpoint menu, CTA, and checkout friction on mobile.",
+    summary: "Immediate page-level edits that reduce taps, clarify intent, and capture more orders.",
+    bullets: ["Above-the-fold CTA audit", "Menu and ordering flow cleanup"],
+  },
+  {
+    title: "Review Intelligence",
+    teaser: "Find the complaint patterns guests keep repeating.",
+    summary: "A deeper look at trust signals, owner replies, and the moments that influence local ranking.",
+    bullets: ["Recurring complaints ranked", "Response guidance for new reviews"],
+  },
+  {
+    title: "Social Media Audit",
+    teaser: "See which content formats are missing repeat visits.",
+    summary: "Track which posts create craving, which ones get ignored, and where the brand looks inconsistent.",
+    bullets: ["Best-performing content angles", "Posting cadence recommendations"],
+  },
+  {
+    title: "Google Visibility Opportunities",
+    teaser: "See local SEO gaps and profile issues hiding demand.",
+    summary: "A focused visibility audit covering profile completeness, intent signals, and local discoverability.",
+    bullets: ["Profile and hours checks", "Keyword and category opportunities"],
+  },
+  {
+    title: "Competitor Snapshot",
+    teaser: "Compare the restaurants taking your traffic nearby.",
+    summary: "Quick competitive positioning against nearby restaurants with stronger search and social pull.",
+    bullets: ["Competitor messaging gaps", "Attention-grabbing differentiators"],
+  },
+  {
+    title: "30-Day Action Plan",
+    teaser: "Follow the priority sequence with weekly milestones.",
+    summary: "A simple execution map that turns the audit into a realistic month of revenue recovery.",
+    bullets: ["Week-by-week milestones", "Owner-friendly action order"],
+  },
+] as const;
+
+type PricingPlan = {
+  id: "report" | "starter" | "pro";
+  name: string;
+  price: string;
+  billing: string;
+  cta: string;
+  description: string;
+  highlights: string[];
+  featured?: boolean;
+};
+
+const pricingPlans: PricingPlan[] = [
+  {
+    id: "report",
+    name: "Instant Full AI Growth Report",
+    price: "$99",
+    billing: "One-time",
+    cta: "Unlock Full Report",
+    description: "A deeper AI-powered restaurant report with exact fixes, conversion leaks, menu/website recommendations, and priority action steps. Instant access after checkout.",
+    highlights: ["Full report breakdown", "Competitor-style insights", "Instant access after checkout"],
+    featured: true,
+  },
+  {
+    id: "starter",
+    name: "Growth Monitor Starter",
+    price: "$49",
+    billing: "Monthly",
+    cta: "Start Monitoring",
+    description: "Weekly AI monitoring for your restaurant’s website, visibility, reviews, and social presence.",
+    highlights: ["Weekly scan checks", "Review signals", "Mobile conversion alerts"],
+  },
+  {
+    id: "pro",
+    name: "Growth Monitor Pro",
+    price: "$99",
+    billing: "Monthly",
+    cta: "Go Pro",
+    description:
+      "Advanced AI monitoring with competitor checks, review intelligence, social content ideas, and priority growth recommendations.",
+    highlights: ["Competitor tracking", "Priority alerts", "Advanced recommendations"],
+  },
+];
+
 export default function AuditApp() {
   const [phase, setPhase] = useState<"form" | "scan" | "results">("form");
   const [step, setStep] = useState(0);
   const [result, setResult] = useState<AuditResult | null>(null);
+  const [pricingOpen, setPricingOpen] = useState(false);
+  const [reportUnlocked, setReportUnlockedState] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<PricingPlan["id"] | null>(null);
+  const [checkoutError, setCheckoutError] = useState("");
   const [form, setForm] = useState<AuditInput>({
     restaurant: "",
     website: "",
     instagram: "",
     tiktok: "",
   });
+
+  useEffect(() => {
+    const storedResult = loadReportResult();
+    const queryParams = new URLSearchParams(window.location.search);
+    const queryUnlocked = queryParams.get("report") === "full" || queryParams.get("access") === "full";
+    const storedUnlocked = isReportUnlocked();
+
+    if (storedResult) {
+      setResult(storedResult);
+      setPhase("results");
+    }
+
+    if (queryUnlocked || storedUnlocked) {
+      setReportUnlockedState(true);
+      setPricingOpen(false);
+      setReportUnlocked(true);
+    }
+
+    if (queryUnlocked) {
+      queryParams.delete("report");
+      queryParams.delete("access");
+      const nextUrl = `${window.location.pathname}${queryParams.toString() ? `?${queryParams.toString()}` : ""}${window.location.hash}`;
+      window.history.replaceState({}, "", nextUrl);
+    }
+  }, []);
 
   useEffect(() => {
     if (phase !== "scan") return;
@@ -82,7 +203,12 @@ export default function AuditApp() {
 
   useEffect(() => {
     if (phase !== "results") return;
+    if (reportUnlocked) {
+      setPricingOpen(false);
+      return;
+    }
 
+    const pricingTimer = window.setTimeout(() => setPricingOpen(true), 1200);
     const scrollTimer = window.setTimeout(() => {
       document.getElementById("report-results")?.scrollIntoView({
         behavior: "smooth",
@@ -90,13 +216,49 @@ export default function AuditApp() {
       });
     }, 150);
 
-    return () => window.clearTimeout(scrollTimer);
-  }, [phase]);
+    return () => {
+      window.clearTimeout(pricingTimer);
+      window.clearTimeout(scrollTimer);
+    };
+  }, [phase, reportUnlocked]);
+
+  useEffect(() => {
+    if (result) saveReportResult(result);
+  }, [result]);
+
+  useEffect(() => {
+    if (reportUnlocked) setPricingOpen(false);
+  }, [reportUnlocked]);
 
   function submitAudit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStep(0);
     setPhase("scan");
+  }
+
+  async function startCheckout(planId: PricingPlan["id"]) {
+    try {
+      setCheckoutPlan(planId);
+      setCheckoutError("");
+
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId }),
+      });
+
+      const data = (await response.json()) as { url?: string; error?: string };
+
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || "Unable to start checkout.");
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : "Checkout failed. Please try again.");
+    } finally {
+      setCheckoutPlan(null);
+    }
   }
 
   return (
@@ -245,7 +407,19 @@ export default function AuditApp() {
       </section>
 
       <AnimatePresence>
-        {phase === "results" && result && <Results result={result} restart={() => setPhase("form")} />}
+        {phase === "results" && result && (
+          <Results
+            result={result}
+            restart={() => setPhase("form")}
+            pricingOpen={pricingOpen}
+            closePricing={() => setPricingOpen(false)}
+            startCheckout={startCheckout}
+            checkoutPlan={checkoutPlan}
+            checkoutError={checkoutError}
+            openPricing={() => setPricingOpen(true)}
+            reportUnlocked={reportUnlocked}
+          />
+        )}
       </AnimatePresence>
 
       <TrustStrip />
@@ -280,9 +454,13 @@ function Input({
   );
 }
 
-function ReportCard({ children, className = "" }: { children: ReactNode; className?: string }) {
+function ReportCard({
+  children,
+  className = "",
+  ...rest
+}: HTMLAttributes<HTMLDivElement> & { children: ReactNode }) {
   return (
-    <div className={`glass min-w-0 rounded-[1.5rem] p-5 sm:p-6 lg:p-8 ${className}`}>
+    <div className={`glass min-w-0 rounded-[1.5rem] p-5 sm:p-6 lg:p-8 ${className}`} {...rest}>
       {children}
     </div>
   );
@@ -357,120 +535,429 @@ function RevenueLeakCard() {
   );
 }
 
-function Results({ result, restart }: { result: AuditResult; restart: () => void }) {
+function Results({
+  result,
+  restart,
+  pricingOpen,
+  closePricing,
+  startCheckout,
+  checkoutPlan,
+  checkoutError,
+  openPricing,
+  reportUnlocked,
+}: {
+  result: AuditResult;
+  restart: () => void;
+  pricingOpen: boolean;
+  closePricing: () => void;
+  startCheckout: (planId: PricingPlan["id"]) => Promise<void>;
+  checkoutPlan: PricingPlan["id"] | null;
+  checkoutError: string;
+  openPricing: () => void;
+  reportUnlocked: boolean;
+}) {
   return (
-    <motion.section
-      id="report-results"
-      key="results"
-      initial={{ opacity: 0, y: 28 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 18 }}
-      className="relative z-10 mx-auto w-full max-w-[1240px] scroll-mt-8 px-0 pb-12 pt-6 sm:pb-16 sm:pt-8"
-    >
-      <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">Growth report unlocked</p>
-          <h2 className="mt-3 max-w-4xl text-3xl font-black leading-[1.05] text-white sm:text-4xl lg:text-5xl">
-            {result.headline}
-          </h2>
+    <>
+      <motion.section
+        id="report-results"
+        key="results"
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 18 }}
+        className="relative z-10 mx-auto w-full max-w-[1240px] scroll-mt-8 px-0 pb-12 pt-6 sm:pb-16 sm:pt-8"
+      >
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">Growth report unlocked</p>
+            <h2 className="mt-3 max-w-4xl text-3xl font-black leading-[1.05] text-white sm:text-4xl lg:text-5xl">
+              {result.headline}
+            </h2>
+          </div>
+          <button onClick={restart} className="w-full rounded-2xl border border-white/15 bg-white/[0.035] px-5 py-4 font-bold text-white/80 transition duration-300 hover:-translate-y-0.5 hover:border-lime/50 hover:bg-lime/[0.06] hover:text-white focus:outline-none focus:ring-4 focus:ring-lime/20 sm:w-auto">
+            Scan another restaurant
+          </button>
         </div>
-        <button onClick={restart} className="w-full rounded-2xl border border-white/15 bg-white/[0.035] px-5 py-4 font-bold text-white/80 transition duration-300 hover:-translate-y-0.5 hover:border-lime/50 hover:bg-lime/[0.06] hover:text-white focus:outline-none focus:ring-4 focus:ring-lime/20 sm:w-auto">
-          Scan another restaurant
-        </button>
-      </div>
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,.86fr)_minmax(0,1.14fr)] lg:gap-8">
-        <ReportCard className="relative overflow-hidden border-lime/18 bg-[linear-gradient(145deg,rgba(198,255,0,.11),rgba(183,255,0,.045),rgba(255,255,255,.03))] shadow-glow">
-          <GoldBurst />
-          <div className="relative flex min-w-0 flex-col items-center gap-5 text-center">
-            <ScoreRing score={result.score} size="large" />
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-white/48">Growth score</p>
-              <p className="mt-2 text-base leading-7 text-white/66">
-                The score matters less than the pattern: guests are likely hesitating at a few fixable moments before they order, reserve, or return.
-              </p>
+        <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,.86fr)_minmax(0,1.14fr)] lg:gap-8">
+          <ReportCard className="relative overflow-hidden border-lime/18 bg-[linear-gradient(145deg,rgba(198,255,0,.11),rgba(183,255,0,.045),rgba(255,255,255,.03))] shadow-glow">
+            <GoldBurst />
+            <div className="relative flex min-w-0 flex-col items-center gap-5 text-center">
+              <ScoreRing score={result.score} size="large" />
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-white/48">Growth score</p>
+                <p className="mt-2 text-base leading-7 text-white/66">
+                  The score matters less than the pattern: guests are likely hesitating at a few fixable moments before they order, reserve, or return.
+                </p>
+              </div>
             </div>
+          </ReportCard>
+
+          <div className="grid min-w-0 gap-6">
+            <ReportCard>
+              <div className="flex min-w-0 items-start gap-3 text-gold">
+                <AlertTriangle className="mt-1 shrink-0" size={22} />
+                <div className="min-w-0">
+                  <h3 className="text-2xl font-black leading-tight text-white">Revenue leak detected</h3>
+                  <p className="mt-3 text-base leading-7 text-white/64">Your fastest wins are CTA clarity, review trust, and repeat-guest capture.</p>
+                </div>
+              </div>
+            </ReportCard>
+            <ReportCard className="border-lime/18 bg-lime/[0.045]">
+              <div className="flex min-w-0 items-start gap-3 text-lime">
+                <TrendingUp className="mt-1 shrink-0" size={22} />
+                <div className="min-w-0">
+                  <h3 className="text-2xl font-black leading-tight text-white">Best next move</h3>
+                  <p className="mt-3 text-base leading-7 text-white/68">{result.opportunities[0].title}</p>
+                </div>
+              </div>
+            </ReportCard>
+          </div>
+        </div>
+
+        <ReportCard className="mt-6 border-gold/25 bg-[linear-gradient(145deg,rgba(255,191,49,.1),rgba(0,0,0,.22))] shadow-gold lg:mt-8">
+          <div className="mb-5 flex min-w-0 items-start gap-3 text-gold">
+            <Trophy className="mt-1 shrink-0" size={22} />
+            <div className="min-w-0">
+              <h3 className="text-2xl font-black leading-tight text-white">Top Growth Opportunities</h3>
+              <p className="mt-2 text-base leading-7 text-white/58">Prioritized by likely customer impact, not vanity metrics.</p>
+            </div>
+          </div>
+          <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+            {result.opportunities.map((item, index) => (
+              <div key={item.title} className="group flex min-w-0 gap-4 rounded-3xl border border-white/10 bg-black/24 p-4 transition duration-300 hover:-translate-y-0.5 hover:border-gold/25 hover:bg-black/32 sm:p-5">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gold text-sm font-black text-ink">{index + 1}</span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="min-w-0 text-base font-black leading-6 text-white">{item.title}</span>
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${item.impact === "High" ? "bg-red-500/15 text-red-200" : "bg-gold/15 text-gold"}`}>
+                      {item.impact} impact
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-white/62 sm:text-base sm:leading-7">{item.detail}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </ReportCard>
 
-        <div className="grid min-w-0 gap-6">
-          <ReportCard>
-            <div className="flex min-w-0 items-start gap-3 text-gold">
-              <AlertTriangle className="mt-1 shrink-0" size={22} />
-              <div className="min-w-0">
-                <h3 className="text-2xl font-black leading-tight text-white">Revenue leak detected</h3>
-                <p className="mt-3 text-base leading-7 text-white/64">Your fastest wins are CTA clarity, review trust, and repeat-guest capture.</p>
-              </div>
-            </div>
-          </ReportCard>
-          <ReportCard className="border-lime/18 bg-lime/[0.045]">
-            <div className="flex min-w-0 items-start gap-3 text-lime">
-              <TrendingUp className="mt-1 shrink-0" size={22} />
-              <div className="min-w-0">
-                <h3 className="text-2xl font-black leading-tight text-white">Best next move</h3>
-                <p className="mt-3 text-base leading-7 text-white/68">{result.opportunities[0].title}</p>
-              </div>
-            </div>
-          </ReportCard>
+        <div className="mt-6 grid min-w-0 gap-5 sm:grid-cols-2 lg:mt-8 lg:grid-cols-3">
+          {result.categories.map((category) => {
+            const Icon = categoryIcons[category.name as keyof typeof categoryIcons];
+            return (
+              <ReportCard key={category.name} className="p-5 transition duration-300 hover:-translate-y-0.5 hover:border-lime/25 hover:bg-white/[0.06] sm:p-6">
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2 font-black text-white">
+                    <Icon className="shrink-0 text-lime" size={19} />
+                    <span className="min-w-0 [overflow-wrap:anywhere]">{category.name}</span>
+                  </div>
+                  <span className="shrink-0 text-2xl font-black text-lime">{category.score}</span>
+                </div>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${category.score}%` }} transition={{ delay: 0.18, duration: 0.9, ease: "easeOut" }} className="h-full rounded-full bg-lime shadow-glow" />
+                </div>
+                <p className="mt-4 text-base font-bold leading-6 text-white">{category.issue}</p>
+                <p className="mt-2 text-sm leading-6 text-white/58">{category.why}</p>
+                <p className="mt-4 text-sm leading-6 text-white/78">Fix: {category.fix}</p>
+              </ReportCard>
+            );
+          })}
         </div>
-      </div>
 
-      <ReportCard className="mt-6 border-gold/25 bg-[linear-gradient(145deg,rgba(255,191,49,.1),rgba(0,0,0,.22))] shadow-gold lg:mt-8">
-        <div className="mb-5 flex min-w-0 items-start gap-3 text-gold">
-          <Trophy className="mt-1 shrink-0" size={22} />
-          <div className="min-w-0">
-            <h3 className="text-2xl font-black leading-tight text-white">Top Growth Opportunities</h3>
-            <p className="mt-2 text-base leading-7 text-white/58">Prioritized by likely customer impact, not vanity metrics.</p>
+        <PremiumSectionGrid unlocked={reportUnlocked} />
+
+        <PricingSection
+          reportUnlocked={reportUnlocked}
+          checkoutPlan={checkoutPlan}
+          checkoutError={checkoutError}
+          onCheckout={startCheckout}
+        />
+
+        <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-center sm:p-6 lg:mt-8">
+          <p className="text-base font-bold leading-7 text-white/74">Report preview complete. The fastest path is fixing the top opportunity first, then using the score cards as your weekly growth checklist.</p>
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <button onClick={openPricing} className="w-full rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-4 font-black uppercase text-ink shadow-[0_0_42px_rgba(198,255,0,.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_62px_rgba(198,255,0,.4)] sm:w-auto">
+              Unlock Full Growth Plan
+            </button>
+            <button onClick={restart} className="w-full rounded-2xl border border-white/15 bg-white/[0.035] px-5 py-4 font-black uppercase text-white/80 transition duration-300 hover:-translate-y-0.5 hover:border-lime/50 hover:bg-lime/[0.06] hover:text-white sm:w-auto">
+              Scan another restaurant
+            </button>
           </div>
         </div>
-        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-          {result.opportunities.map((item, index) => (
-            <div key={item.title} className="group flex min-w-0 gap-4 rounded-3xl border border-white/10 bg-black/24 p-4 transition duration-300 hover:-translate-y-0.5 hover:border-gold/25 hover:bg-black/32 sm:p-5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gold text-sm font-black text-ink">{index + 1}</span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="min-w-0 text-base font-black leading-6 text-white">{item.title}</span>
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${item.impact === "High" ? "bg-red-500/15 text-red-200" : "bg-gold/15 text-gold"}`}>
-                    {item.impact} impact
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-white/62 sm:text-base sm:leading-7">{item.detail}</p>
-              </div>
-            </div>
-          ))}
+      </motion.section>
+
+      <PricingModal
+        open={pricingOpen}
+        onClose={closePricing}
+        reportUnlocked={reportUnlocked}
+        checkoutPlan={checkoutPlan}
+        checkoutError={checkoutError}
+        onCheckout={startCheckout}
+      />
+    </>
+  );
+}
+
+function PremiumSectionGrid({ unlocked }: { unlocked: boolean }) {
+  return (
+    <ReportCard className="mt-6 border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,.045),rgba(14,19,32,.92))] shadow-[0_0_28px_rgba(0,0,0,.18)] lg:mt-8">
+      <div className="mb-5 flex min-w-0 flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">
+            {unlocked ? "Full AI growth plan" : "Premium sections locked"}
+          </p>
+          <h3 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
+            {unlocked ? "Your deeper growth playbook is now visible." : "Locked premium sections reveal the next layer of growth."}
+          </h3>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
+            {unlocked
+              ? "These are the deeper AI recommendations the paid report unlocks immediately."
+              : "These sections stay blurred until checkout, so users can see the value before they buy."}
+          </p>
         </div>
-      </ReportCard>
-
-      <div className="mt-6 grid min-w-0 gap-5 sm:grid-cols-2 lg:mt-8 lg:grid-cols-3">
-        {result.categories.map((category) => {
-          const Icon = categoryIcons[category.name as keyof typeof categoryIcons];
-          return (
-            <ReportCard key={category.name} className="p-5 transition duration-300 hover:-translate-y-0.5 hover:border-lime/25 hover:bg-white/[0.06] sm:p-6">
-              <div className="flex min-w-0 items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2 font-black text-white">
-                  <Icon className="shrink-0 text-lime" size={19} />
-                  <span className="min-w-0 [overflow-wrap:anywhere]">{category.name}</span>
-                </div>
-                <span className="shrink-0 text-2xl font-black text-lime">{category.score}</span>
-              </div>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${category.score}%` }} transition={{ delay: 0.18, duration: 0.9, ease: "easeOut" }} className="h-full rounded-full bg-lime shadow-glow" />
-              </div>
-              <p className="mt-4 text-base font-bold leading-6 text-white">{category.issue}</p>
-              <p className="mt-2 text-sm leading-6 text-white/58">{category.why}</p>
-              <p className="mt-4 text-sm leading-6 text-white/78">Fix: {category.fix}</p>
-            </ReportCard>
-          );
-        })}
+        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white/70">
+          <ShieldCheck size={14} className="text-lime" />
+          Instant access after checkout
+        </div>
       </div>
 
-      <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-center sm:p-6 lg:mt-8">
-        <p className="text-base font-bold leading-7 text-white/74">Report preview complete. The fastest path is fixing the top opportunity first, then using the score cards as your weekly growth checklist.</p>
-        <button onClick={restart} className="mt-5 w-full rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-4 font-black uppercase text-ink shadow-[0_0_42px_rgba(198,255,0,.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_62px_rgba(198,255,0,.4)] sm:w-auto">
-          Scan another restaurant
-        </button>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {premiumSections.map((section) => (
+          <PremiumSectionCard key={section.title} section={section} unlocked={unlocked} />
+        ))}
       </div>
-    </motion.section>
+    </ReportCard>
+  );
+}
+
+function PremiumSectionCard({
+  section,
+  unlocked,
+}: {
+  section: (typeof premiumSections)[number];
+  unlocked: boolean;
+}) {
+  return (
+    <div className="relative min-w-0 overflow-hidden rounded-[1.45rem] border border-white/10 bg-black/24 p-5 transition duration-300 hover:-translate-y-0.5 hover:border-lime/25 hover:bg-black/28 sm:p-6">
+      <div className={`min-w-0 ${unlocked ? "" : "select-none opacity-30 blur-[2px]"}`}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-lime/85">{unlocked ? "Unlocked premium section" : "Locked premium section"}</p>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white/52">
+            {unlocked ? "AI depth" : "Preview"}
+          </span>
+        </div>
+        <h4 className="mt-3 text-lg font-black leading-tight text-white">{section.title}</h4>
+        <p className="mt-2 text-sm leading-6 text-white/62">{unlocked ? section.summary : section.teaser}</p>
+        {unlocked ? (
+          <ul className="mt-4 space-y-2">
+            {section.bullets.map((bullet) => (
+              <li key={bullet} className="flex items-start gap-2 text-sm leading-6 text-white/78">
+                <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-lime" />
+                <span>{bullet}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+
+      {!unlocked ? (
+        <div className="absolute inset-0 flex flex-col justify-between bg-[linear-gradient(180deg,rgba(5,8,22,.2),rgba(5,8,22,.62))] p-5 sm:p-6">
+          <div className="flex items-center gap-2 rounded-full border border-lime/25 bg-lime/[0.08] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-lime">
+            <AlertTriangle size={13} />
+            Locked
+          </div>
+          <div className="max-w-[14rem] rounded-2xl border border-white/10 bg-black/35 px-3 py-2 text-sm leading-6 text-white/82 backdrop-blur-sm">
+            Unlock to reveal {section.title.toLowerCase()}.
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PricingSection({
+  reportUnlocked,
+  onCheckout,
+  checkoutPlan,
+  checkoutError,
+}: {
+  reportUnlocked: boolean;
+  onCheckout: (planId: PricingPlan["id"]) => Promise<void>;
+  checkoutPlan: PricingPlan["id"] | null;
+  checkoutError: string;
+}) {
+  return (
+    <ReportCard className="mt-6 border-lime/15 bg-[linear-gradient(145deg,rgba(198,255,0,.08),rgba(14,19,32,.95))] shadow-glow lg:mt-8" id="pricing">
+      <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">
+            {reportUnlocked ? "Instant full report unlocked" : "Unlock the full AI growth plan"}
+          </p>
+          <h3 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
+            {reportUnlocked
+              ? "Your full AI growth report is ready."
+              : "Your free scan found 3 revenue leaks. Unlock the full AI growth plan."}
+          </h3>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
+            {reportUnlocked
+              ? "You now have instant access to the full report, while weekly monitoring remains available below."
+              : "Get deeper AI insights, weekly monitoring, review intelligence, conversion recommendations, and competitor tracking."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white/70">
+          <ShieldCheck size={14} className="text-lime" />
+          Secure Stripe Checkout
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {pricingPlans.map((plan) => (
+          <PricingCard
+            key={plan.id}
+            plan={plan}
+            onCheckout={onCheckout}
+            loading={checkoutPlan === plan.id}
+            reportUnlocked={reportUnlocked && plan.id === "report"}
+          />
+        ))}
+      </div>
+
+      {checkoutError ? <p className="mt-4 text-sm font-medium text-red-300">{checkoutError}</p> : null}
+    </ReportCard>
+  );
+}
+
+function PricingModal({
+  open,
+  onClose,
+  reportUnlocked,
+  onCheckout,
+  checkoutPlan,
+  checkoutError,
+}: {
+  open: boolean;
+  onClose: () => void;
+  reportUnlocked: boolean;
+  onCheckout: (planId: PricingPlan["id"]) => Promise<void>;
+  checkoutPlan: PricingPlan["id"] | null;
+  checkoutError: string;
+}) {
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center px-4 py-5"
+        >
+          <button aria-label="Close pricing modal" onClick={onClose} className="absolute inset-0 bg-black/72 backdrop-blur-[12px]" />
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.98 }}
+            className="glass relative z-10 w-full max-w-5xl overflow-hidden rounded-[2rem] p-5 shadow-[0_30px_120px_rgba(0,0,0,.65)] sm:p-6 lg:p-7"
+            style={{ maxHeight: "calc(100vh - 2rem)", overflowY: "auto" }}
+          >
+            <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">
+                  {reportUnlocked ? "Instant full report unlocked" : "Premium unlock"}
+                </p>
+                <h3 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">
+                  {reportUnlocked
+                    ? "Your full AI growth report is ready."
+                    : "Your free scan found 3 revenue leaks. Unlock the full AI growth plan."}
+                </h3>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
+                  {reportUnlocked
+                    ? "Instant access is already available. Weekly monitoring offers deeper ongoing visibility below."
+                    : "Get deeper AI insights, weekly monitoring, review intelligence, conversion recommendations, and competitor tracking."}
+                </p>
+              </div>
+              <button onClick={onClose} className="self-start rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white/70 transition hover:border-lime/30 hover:bg-lime/[0.08] hover:text-white">
+                Close
+              </button>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {pricingPlans.map((plan) => (
+                <PricingCard
+                  key={plan.id}
+                  plan={plan}
+                  onCheckout={onCheckout}
+                  loading={checkoutPlan === plan.id}
+                  reportUnlocked={reportUnlocked && plan.id === "report"}
+                  modal
+                />
+              ))}
+            </div>
+            {checkoutError ? <p className="mt-4 text-sm font-medium text-red-300">{checkoutError}</p> : null}
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+function PricingCard({
+  plan,
+  onCheckout,
+  loading,
+  reportUnlocked,
+  modal = false,
+}: {
+  plan: PricingPlan;
+  onCheckout: (planId: PricingPlan["id"]) => Promise<void>;
+  loading: boolean;
+  reportUnlocked: boolean;
+  modal?: boolean;
+}) {
+  const unlockedReport = reportUnlocked && plan.id === "report";
+
+  return (
+    <div
+      className={`group flex min-w-0 flex-col rounded-[1.6rem] border bg-[linear-gradient(145deg,rgba(255,255,255,.05),rgba(14,19,32,.92))] p-5 transition duration-300 hover:-translate-y-1 hover:border-lime/30 hover:shadow-[0_0_32px_rgba(198,255,0,.1)] sm:p-6 ${
+        unlockedReport || plan.featured ? "border-lime/30 shadow-glow" : "border-white/10"
+      } ${modal ? "lg:min-h-[26rem]" : "min-h-full"}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-lime/90">
+            {unlockedReport ? "Unlocked" : plan.featured ? "Most popular" : "Plan"}
+          </p>
+          <h4 className="mt-2 text-xl font-black leading-tight text-white">{plan.name}</h4>
+        </div>
+        <div className="rounded-full border border-white/10 bg-white/[0.04] p-2 text-lime">
+          <CreditCard size={16} />
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-end gap-2">
+        <span className="text-4xl font-black tracking-[-0.06em] text-white">{plan.price}</span>
+        <span className="pb-1 text-sm font-bold text-white/56">{plan.billing}</span>
+      </div>
+
+      <p className="mt-4 text-sm leading-6 text-white/64">{plan.description}</p>
+
+      <ul className="mt-5 space-y-2">
+        {plan.highlights.map((item) => (
+          <li key={item} className="flex items-center gap-2 text-sm text-white/72">
+            <CheckCircle2 size={15} className="text-lime" />
+            {item}
+          </li>
+        ))}
+      </ul>
+
+      <button
+        onClick={() => onCheckout(plan.id)}
+        disabled={loading || unlockedReport}
+        className="group mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-4 text-sm font-black uppercase tracking-[-0.01em] text-ink shadow-[0_0_42px_rgba(198,255,0,.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_64px_rgba(198,255,0,.42)] disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        {loading ? <Loader2 size={18} className="animate-spin" /> : null}
+        {unlockedReport ? "Included" : plan.cta}
+        {!loading && !unlockedReport ? <ArrowRight size={17} className="transition group-hover:translate-x-1" /> : null}
+      </button>
+    </div>
   );
 }
 

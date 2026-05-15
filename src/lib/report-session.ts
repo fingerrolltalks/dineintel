@@ -1,0 +1,36 @@
+import type { AuditResult } from "@/lib/audit";
+
+const REPORT_RESULT_KEY = "dineintel-report-result";
+const REPORT_UNLOCK_KEY = "dineintel-report-unlocked";
+
+function isBrowser() {
+  return typeof window !== "undefined";
+}
+
+export function saveReportResult(result: AuditResult) {
+  if (!isBrowser()) return;
+  window.localStorage.setItem(REPORT_RESULT_KEY, JSON.stringify(result));
+}
+
+export function loadReportResult() {
+  if (!isBrowser()) return null;
+
+  const raw = window.localStorage.getItem(REPORT_RESULT_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as AuditResult;
+  } catch {
+    return null;
+  }
+}
+
+export function setReportUnlocked(unlocked: boolean) {
+  if (!isBrowser()) return;
+  window.localStorage.setItem(REPORT_UNLOCK_KEY, unlocked ? "1" : "0");
+}
+
+export function isReportUnlocked() {
+  if (!isBrowser()) return false;
+  return window.localStorage.getItem(REPORT_UNLOCK_KEY) === "1";
+}
