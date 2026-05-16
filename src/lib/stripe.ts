@@ -5,26 +5,30 @@ export type CheckoutPlanId = "report" | "starter" | "pro";
 export const planConfig: Record<
   CheckoutPlanId,
   {
-    priceEnv:
+    priceEnvKeys: Array<
+      | "STRIPE_PRICE_REPORT"
       | "STRIPE_PRICE_DETAILED_REPORT"
+      | "STRIPE_PRICE_STARTER"
       | "STRIPE_PRICE_STARTER_MONITOR"
-      | "STRIPE_PRICE_PRO_MONITOR";
+      | "STRIPE_PRICE_PRO"
+      | "STRIPE_PRICE_PRO_MONITOR"
+    >;
     mode: "payment" | "subscription";
     successLabel: string;
   }
 > = {
   report: {
-    priceEnv: "STRIPE_PRICE_DETAILED_REPORT",
+    priceEnvKeys: ["STRIPE_PRICE_REPORT", "STRIPE_PRICE_DETAILED_REPORT"],
     mode: "payment",
     successLabel: "Detailed AI Growth Report",
   },
   starter: {
-    priceEnv: "STRIPE_PRICE_STARTER_MONITOR",
+    priceEnvKeys: ["STRIPE_PRICE_STARTER", "STRIPE_PRICE_STARTER_MONITOR"],
     mode: "subscription",
     successLabel: "Growth Monitor Starter",
   },
   pro: {
-    priceEnv: "STRIPE_PRICE_PRO_MONITOR",
+    priceEnvKeys: ["STRIPE_PRICE_PRO", "STRIPE_PRICE_PRO_MONITOR"],
     mode: "subscription",
     successLabel: "Growth Monitor Pro",
   },
@@ -67,4 +71,17 @@ export function getAppUrl(request: Request) {
   }
 
   return configuredUrl;
+}
+
+export function getPlanPriceId(planId: CheckoutPlanId) {
+  const config = planConfig[planId];
+
+  for (const key of config.priceEnvKeys) {
+    const priceId = process.env[key];
+    if (priceId) {
+      return { priceId, priceEnvKey: key };
+    }
+  }
+
+  throw new Error(`Missing Stripe price env for ${planId}.`);
 }

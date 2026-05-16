@@ -21,7 +21,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { FormEvent, HTMLAttributes, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generateAudit, type AuditInput, type AuditResult } from "@/lib/audit";
 import { isReportUnlocked, loadReportResult, saveReportResult, setReportUnlocked } from "@/lib/report-session";
 
@@ -56,50 +56,119 @@ const categoryIcons = {
   Retention: Users,
 };
 
-const premiumSections = [
+type PremiumSection = {
+  title: string;
+  teaser: string;
+  finding: string;
+  why: string;
+  revenueImpact: string;
+  action: string;
+  priority: "High" | "Medium" | "Low";
+  difficulty: "Easy" | "Medium" | "Hard";
+  quickWin: string;
+  longTerm: string;
+};
+
+const premiumSections: PremiumSection[] = [
   {
-    title: "Full AI Growth Plan",
-    teaser: "See the exact 30-day sequence to recover lost orders and bookings.",
-    summary: "A prioritized rollout that separates urgent fixes from high-leverage growth moves.",
-    bullets: ["Week 1 fixes are front-loaded", "Each task is ranked by impact and speed"],
+    title: "Homepage CTA Friction Detected",
+    teaser: "The hero may be making guests work too hard before they see how to order.",
+    finding:
+      "Visitors likely understand the brand, but the next action is still a little buried on mobile. That creates extra hesitation at the exact moment they should convert.",
+    why:
+      "When guests pause to search for Menu, Order, or Reserve, some of them leave before they ever tap.",
+    revenueImpact: "Estimated recovery: $700-$1,100/mo",
+    action: "Move the primary CTA higher, repeat it after the trust proof, and make the mobile action row impossible to miss.",
+    priority: "High",
+    difficulty: "Easy",
+    quickWin: "Repeat Menu / Order above the fold and near the first scroll break.",
+    longTerm: "A/B test two hero layouts and track mobile tap-through rate weekly.",
   },
   {
-    title: "Website Conversion Fixes",
-    teaser: "Pinpoint menu, CTA, and checkout friction on mobile.",
-    summary: "Immediate page-level edits that reduce taps, clarify intent, and capture more orders.",
-    bullets: ["Above-the-fold CTA audit", "Menu and ordering flow cleanup"],
+    title: "Review Trust Signal Gap",
+    teaser: "Guests may be reading recent complaints before they decide.",
+    finding:
+      "The paid report would likely surface repeated phrases around wait time, service speed, or order clarity. Those patterns usually influence whether a guest trusts the restaurant enough to commit.",
+    why:
+      "Fresh responses and visible follow-through help local ranking signals and reduce the risk of losing high-intent diners.",
+    revenueImpact: "Estimated recovery: $500-$900/mo",
+    action: "Reply to the newest negative reviews, acknowledge the issue directly, and show one visible fix in public responses.",
+    priority: "High",
+    difficulty: "Easy",
+    quickWin: "Respond to the latest low-rated reviews with one clear fix.",
+    longTerm: "Build a weekly review response process for service, timing, and order accuracy complaints.",
   },
   {
-    title: "Review Intelligence",
-    teaser: "Find the complaint patterns guests keep repeating.",
-    summary: "A deeper look at trust signals, owner replies, and the moments that influence local ranking.",
-    bullets: ["Recurring complaints ranked", "Response guidance for new reviews"],
+    title: "Google Visibility Losses",
+    teaser: "Local search demand may be leaking before guests even hit the site.",
+    finding:
+      "The report would likely show profile gaps around hours, categories, photo freshness, and intent keywords that help Google decide whether to surface the restaurant.",
+    why:
+      "Small local SEO misses can quietly reduce calls, directions taps, and website visits without any obvious warning.",
+    revenueImpact: "Estimated recovery: $600-$1,200/mo",
+    action: "Tighten business hours, sharpen category and keyword coverage, and keep photos updated around current menu highlights.",
+    priority: "High",
+    difficulty: "Medium",
+    quickWin: "Refresh hours, categories, and profile photos this week.",
+    longTerm: "Monitor local profile completeness and visibility changes every week.",
   },
   {
-    title: "Social Media Audit",
-    teaser: "See which content formats are missing repeat visits.",
-    summary: "Track which posts create craving, which ones get ignored, and where the brand looks inconsistent.",
-    bullets: ["Best-performing content angles", "Posting cadence recommendations"],
+    title: "Social Content Is Under-Selling The Food",
+    teaser: "The feed may not be creating enough craving or recall.",
+    finding:
+      "Short-form clips, signature dishes, and clearer visit prompts often outperform generic brand posts. If those are missing, guests have less reason to remember or share the restaurant.",
+    why:
+      "Restaurants win attention when the food is instantly understandable and easy to desire in under a few seconds.",
+    revenueImpact: "Estimated recovery: $450-$850/mo",
+    action: "Post three short clips per week: one hero dish, one behind-the-scenes moment, and one clear order or visit CTA.",
+    priority: "Medium",
+    difficulty: "Medium",
+    quickWin: "Publish one food-focused reel with a clear order prompt.",
+    longTerm: "Create a repeatable content system that tracks which dishes earn saves and shares.",
   },
   {
-    title: "Google Visibility Opportunities",
-    teaser: "See local SEO gaps and profile issues hiding demand.",
-    summary: "A focused visibility audit covering profile completeness, intent signals, and local discoverability.",
-    bullets: ["Profile and hours checks", "Keyword and category opportunities"],
+    title: "Repeat Guest Capture Is Weak",
+    teaser: "Owned channels may be missing a simple way to bring diners back.",
+    finding:
+      "If email, SMS, or loyalty prompts are absent near checkout, the restaurant keeps paying to reacquire the same guests again and again.",
+    why:
+      "Repeat customers are cheaper to convert than first-time guests and are less likely to be lost to delivery apps or competitor ads.",
+    revenueImpact: "Estimated recovery: $650-$1,150/mo",
+    action: "Add a simple return offer near checkout and capture guests through email or SMS before they leave the site.",
+    priority: "Medium",
+    difficulty: "Easy",
+    quickWin: "Place a loyalty or return prompt on the menu and checkout flow.",
+    longTerm: "Build a monthly guest-return campaign that ties back to new menu specials.",
   },
   {
-    title: "Competitor Snapshot",
-    teaser: "Compare the restaurants taking your traffic nearby.",
-    summary: "Quick competitive positioning against nearby restaurants with stronger search and social pull.",
-    bullets: ["Competitor messaging gaps", "Attention-grabbing differentiators"],
+    title: "AI Competitive Position",
+    teaser: "Nearby restaurants are probably winning on visibility, trust, and content cadence.",
+    finding:
+      "Competitors are likely showing up stronger in short-form content, clearer order prompts, and more active review replies. That combination helps them get the first click and the first visit.",
+    why:
+      "Guests compare restaurants fast. The brands that look more active and trustworthy usually win before the customer makes a deeper comparison.",
+    revenueImpact: "Estimated recovery: $900-$1,800/mo",
+    action: "Match competitor posting cadence, tighten search terms, and answer recent complaints publicly so the brand looks more alive and credible.",
+    priority: "High",
+    difficulty: "Medium",
+    quickWin: "Refresh the Instagram bio, post one hero dish clip, and reply to the latest negative review.",
+    longTerm: "Track the top three nearby restaurants weekly for content, search presence, and response speed.",
   },
   {
-    title: "30-Day Action Plan",
-    teaser: "Follow the priority sequence with weekly milestones.",
-    summary: "A simple execution map that turns the audit into a realistic month of revenue recovery.",
-    bullets: ["Week-by-week milestones", "Owner-friendly action order"],
+    title: "AI Weekly Monitoring Preview",
+    teaser: "This is the subscription layer that catches problems before they become expensive.",
+    finding:
+      "Weekly monitoring would show visibility changes, review alerts, social performance shifts, and conversion warnings before they snowball into lost weekends.",
+    why:
+      "Most revenue leaks are small at first. The value of ongoing tracking is catching the pattern early enough to act before demand slips.",
+    revenueImpact: "Estimated protection: $400-$900/mo",
+    action: "Set weekly thresholds for local visibility, review sentiment, social traction, and mobile CTA performance.",
+    priority: "Medium",
+    difficulty: "Easy",
+    quickWin: "Turn on weekly alerts and create a single snapshot review each Monday.",
+    longTerm: "Compare trend lines against nearby competitors to spot drift before it hurts revenue.",
   },
-] as const;
+];
 
 type PricingPlan = {
   id: "report" | "starter" | "pro";
@@ -115,7 +184,7 @@ type PricingPlan = {
 const pricingPlans: PricingPlan[] = [
   {
     id: "report",
-    name: "Instant Full AI Growth Report",
+    name: "Detailed AI Growth Report",
     price: "$99",
     billing: "One-time",
     cta: "Unlock Full Report",
@@ -157,12 +226,18 @@ export default function AuditApp() {
     website: "",
     instagram: "",
     tiktok: "",
+    cuisine: "",
+    city: "",
   });
+  const auditRequestRef = useRef<Promise<AuditResult> | null>(null);
+  const auditAbortRef = useRef<AbortController | null>(null);
+  const auditTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const storedResult = loadReportResult();
     const queryParams = new URLSearchParams(window.location.search);
     const queryUnlocked = queryParams.get("report") === "full" || queryParams.get("access") === "full";
+    const querySessionId = queryParams.get("session_id")?.trim() || "";
     const storedUnlocked = isReportUnlocked();
 
     if (storedResult) {
@@ -174,13 +249,40 @@ export default function AuditApp() {
       setReportUnlockedState(true);
       setPricingOpen(false);
       setReportUnlocked(true);
+      if (!querySessionId) {
+        queryParams.delete("report");
+        queryParams.delete("access");
+        const nextUrl = `${window.location.pathname}${queryParams.toString() ? `?${queryParams.toString()}` : ""}${window.location.hash}`;
+        window.history.replaceState({}, "", nextUrl);
+      }
     }
 
-    if (queryUnlocked) {
-      queryParams.delete("report");
-      queryParams.delete("access");
-      const nextUrl = `${window.location.pathname}${queryParams.toString() ? `?${queryParams.toString()}` : ""}${window.location.hash}`;
-      window.history.replaceState({}, "", nextUrl);
+    if (querySessionId) {
+      void (async () => {
+        try {
+          const response = await fetch("/api/purchase-access", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId: querySessionId }),
+          });
+
+          if (!response.ok) return;
+
+          const data = (await response.json()) as { unlocked?: boolean };
+          if (!data.unlocked) return;
+
+          setReportUnlockedState(true);
+          setReportUnlocked(true);
+          setPricingOpen(false);
+          queryParams.delete("report");
+          queryParams.delete("access");
+          queryParams.delete("session_id");
+          const nextUrl = `${window.location.pathname}${queryParams.toString() ? `?${queryParams.toString()}` : ""}${window.location.hash}`;
+          window.history.replaceState({}, "", nextUrl);
+        } catch {
+          // Keep the URL intact so the user can retry.
+        }
+      })();
     }
   }, []);
 
@@ -190,14 +292,17 @@ export default function AuditApp() {
     const timers = scanSteps.map((_, index) =>
       window.setTimeout(() => setStep(index), index * 720),
     );
-    const finish = window.setTimeout(() => {
-      setResult(generateAudit(form));
+    const finish = window.setTimeout(async () => {
+      const nextResult = auditRequestRef.current ? await auditRequestRef.current : generateAudit(form);
+      setResult(nextResult);
       setPhase("results");
     }, scanSteps.length * 720 + 300);
 
     return () => {
       timers.forEach(window.clearTimeout);
       window.clearTimeout(finish);
+      if (auditTimeoutRef.current) window.clearTimeout(auditTimeoutRef.current);
+      auditAbortRef.current?.abort();
     };
   }, [form, phase]);
 
@@ -227,16 +332,77 @@ export default function AuditApp() {
   }, [result]);
 
   useEffect(() => {
+    if (phase !== "results" || !result || reportUnlocked) return;
+
+    let cancelled = false;
+
+    async function checkServerUnlock() {
+      try {
+        const response = await fetch("/api/purchase-access", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            restaurantName: form.restaurant,
+            restaurantWebsite: form.website,
+          }),
+        });
+
+        if (!response.ok) return;
+
+        const data = (await response.json()) as { unlocked?: boolean };
+        if (!cancelled && data.unlocked) {
+          setReportUnlockedState(true);
+          setReportUnlocked(true);
+          setPricingOpen(false);
+        }
+      } catch {
+        // Quiet fallback to the instant local unlock state.
+      }
+    }
+
+    void checkServerUnlock();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [form.restaurant, form.website, phase, reportUnlocked, result]);
+
+  useEffect(() => {
     if (reportUnlocked) setPricingOpen(false);
   }, [reportUnlocked]);
 
   function submitAudit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStep(0);
+    auditAbortRef.current?.abort();
+    const auditInput = {
+      ...form,
+      cuisine: form.cuisine || "",
+      city: form.city || "",
+    };
+
+    const controller = new AbortController();
+    auditAbortRef.current = controller;
+    if (auditTimeoutRef.current) window.clearTimeout(auditTimeoutRef.current);
+    auditTimeoutRef.current = window.setTimeout(() => controller.abort(), 12000);
+    auditRequestRef.current = fetch("/api/audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(auditInput),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (auditTimeoutRef.current) window.clearTimeout(auditTimeoutRef.current);
+        if (!response.ok) {
+          throw new Error("Failed to generate audit.");
+        }
+        return (await response.json()) as AuditResult;
+      })
+      .catch(() => generateAudit(auditInput));
     setPhase("scan");
   }
 
-  async function startCheckout(planId: PricingPlan["id"]) {
+  async function startCheckout(planId: PricingPlan["id"], auditData = form) {
     try {
       setCheckoutPlan(planId);
       setCheckoutError("");
@@ -244,7 +410,15 @@ export default function AuditApp() {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify({
+          planId,
+          restaurantName: auditData.restaurant,
+          restaurantWebsite: auditData.website,
+          restaurantInstagram: auditData.instagram,
+          restaurantTikTok: auditData.tiktok,
+          cuisine: auditData.cuisine,
+          city: auditData.city,
+        }),
       });
 
       const data = (await response.json()) as { url?: string; error?: string };
@@ -287,7 +461,7 @@ export default function AuditApp() {
             <span className="neon-headline block">leaking revenue.</span>
           </h1>
           <p className="mt-6 max-w-[41rem] text-base leading-7 text-white/74 sm:text-lg sm:leading-8">
-            DineIntel scans your restaurant’s public presence to identify hidden customer friction, trust gaps, and lost revenue opportunities before guests choose somewhere else.
+            DineIntel generates AI-generated growth snapshots and recommendations from your restaurant’s public presence to identify hidden customer friction, trust gaps, and lost revenue opportunities before guests choose somewhere else.
           </p>
           <div className="mt-7 grid min-w-0 gap-3 sm:grid-cols-3">
             {[
@@ -344,9 +518,9 @@ export default function AuditApp() {
                     className="min-w-0 space-y-5"
                   >
                     <div>
-                      <p className="text-xs font-black uppercase tracking-[0.14em] text-lime">Instant audit</p>
+                      <p className="text-xs font-black uppercase tracking-[0.14em] text-lime">AI snapshot</p>
                       <h2 className="mt-2 text-3xl font-black tracking-[-0.04em]">See what guests notice first.</h2>
-                      <p className="mt-3 text-sm leading-6 text-white/62">Enter your details and we’ll scan your public links to find hidden growth leaks in 60 seconds.</p>
+                      <p className="mt-3 text-sm leading-6 text-white/62">Enter your details and we’ll generate AI-generated growth snapshots and recommendations from your public links in about 60 seconds. It’s a fast signal, not a guaranteed live audit.</p>
                     </div>
                     <Input label="Restaurant Name" value={form.restaurant} onChange={(restaurant) => setForm({ ...form, restaurant })} placeholder="Marlow’s Bistro" required />
                     <Input label="Website" value={form.website} onChange={(website) => setForm({ ...form, website })} placeholder="https://restaurant.com" required />
@@ -676,7 +850,7 @@ function Results({
           <p className="text-base font-bold leading-7 text-white/74">Report preview complete. The fastest path is fixing the top opportunity first, then using the score cards as your weekly growth checklist.</p>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <button onClick={openPricing} className="w-full rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-4 font-black uppercase text-ink shadow-[0_0_42px_rgba(198,255,0,.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_62px_rgba(198,255,0,.4)] sm:w-auto">
-              Unlock Full Growth Plan
+              {reportUnlocked ? "Full Growth Plan Unlocked" : "Unlock Full Growth Plan"}
             </button>
             <button onClick={restart} className="w-full rounded-2xl border border-white/15 bg-white/[0.035] px-5 py-4 font-black uppercase text-white/80 transition duration-300 hover:-translate-y-0.5 hover:border-lime/50 hover:bg-lime/[0.06] hover:text-white sm:w-auto">
               Scan another restaurant
@@ -698,32 +872,36 @@ function Results({
 }
 
 function PremiumSectionGrid({ unlocked }: { unlocked: boolean }) {
+  const mainSections = premiumSections.slice(0, -1);
+  const monitoringSection = premiumSections[premiumSections.length - 1];
+
   return (
     <ReportCard className="mt-6 border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,.045),rgba(14,19,32,.92))] shadow-[0_0_28px_rgba(0,0,0,.18)] lg:mt-8">
       <div className="mb-5 flex min-w-0 flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">
-            {unlocked ? "Full AI growth plan" : "Premium sections locked"}
+            {unlocked ? "Full AI analysis" : "Premium sections locked"}
           </p>
           <h3 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
-            {unlocked ? "Your deeper growth playbook is now visible." : "Locked premium sections reveal the next layer of growth."}
+            {unlocked ? "Your deeper restaurant intelligence is now visible." : "Locked premium sections reveal the next layer of growth."}
           </h3>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
             {unlocked
-              ? "These are the deeper AI recommendations the paid report unlocks immediately."
+              ? "These are the deeper AI findings and recommendations the paid report unlocks immediately."
               : "These sections stay blurred until checkout, so users can see the value before they buy."}
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white/70">
           <ShieldCheck size={14} className="text-lime" />
-          Instant access after checkout
+          {unlocked ? "Premium Report Unlocked" : "Instant access after checkout"}
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {premiumSections.map((section) => (
+      <div className="grid gap-4 md:grid-cols-2">
+        {mainSections.map((section) => (
           <PremiumSectionCard key={section.title} section={section} unlocked={unlocked} />
         ))}
+        <PremiumSectionCard key={monitoringSection.title} section={monitoringSection} unlocked={unlocked} className="md:col-span-2" wide />
       </div>
     </ReportCard>
   );
@@ -732,30 +910,74 @@ function PremiumSectionGrid({ unlocked }: { unlocked: boolean }) {
 function PremiumSectionCard({
   section,
   unlocked,
+  className = "",
+  wide = false,
 }: {
-  section: (typeof premiumSections)[number];
+  section: PremiumSection;
   unlocked: boolean;
+  className?: string;
+  wide?: boolean;
 }) {
+  const isMonitoringPreview = section.title === "AI Weekly Monitoring Preview";
+
   return (
-    <div className="relative min-w-0 overflow-hidden rounded-[1.45rem] border border-white/10 bg-black/24 p-5 transition duration-300 hover:-translate-y-0.5 hover:border-lime/25 hover:bg-black/28 sm:p-6">
+    <div
+      className={`relative min-w-0 overflow-hidden rounded-[1.45rem] border border-white/10 bg-black/24 p-5 transition duration-300 hover:-translate-y-0.5 hover:border-lime/25 hover:bg-black/28 sm:p-6 ${
+        className
+      }`}
+    >
       <div className={`min-w-0 ${unlocked ? "" : "select-none opacity-30 blur-[2px]"}`}>
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-lime/85">{unlocked ? "Unlocked premium section" : "Locked premium section"}</p>
-          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white/52">
-            {unlocked ? "AI depth" : "Preview"}
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-lime/85">{unlocked ? "AI finding" : "Locked insight"}</p>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white/52">
+              {unlocked ? "AI depth" : "Preview"}
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white/52">
+              {section.priority}
+            </span>
+          </div>
         </div>
         <h4 className="mt-3 text-lg font-black leading-tight text-white">{section.title}</h4>
-        <p className="mt-2 text-sm leading-6 text-white/62">{unlocked ? section.summary : section.teaser}</p>
+        <p className="mt-2 text-sm leading-6 text-white/62">{unlocked ? section.finding : section.teaser}</p>
         {unlocked ? (
-          <ul className="mt-4 space-y-2">
-            {section.bullets.map((bullet) => (
-              <li key={bullet} className="flex items-start gap-2 text-sm leading-6 text-white/78">
-                <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-lime" />
-                <span>{bullet}</span>
-              </li>
-            ))}
-          </ul>
+          <div className={`mt-4 ${wide || isMonitoringPreview ? "grid gap-3 xl:grid-cols-[1.05fr_.95fr]" : "space-y-3"}`}>
+            <div className="space-y-3">
+              <InsightLine label="Why it matters" value={section.why} />
+              <InsightLine label="Revenue impact" value={section.revenueImpact} accent="gold" />
+              <InsightLine label="Recommended action" value={section.action} />
+            </div>
+            {wide || isMonitoringPreview ? (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <MiniSignal title="Weekly visibility changes" body="Track ranking drift, profile views, and direction taps before they fall off." />
+                <MiniSignal title="Review alerts" body="Catch new low-rated reviews fast and reply before trust compounds downward." />
+                <MiniSignal title="Social performance tracking" body="See which reels, dishes, and posting windows are building the most reach." />
+                <MiniSignal title="Conversion warnings" body="Flag mobile CTA, menu, and order-path drops the same week they appear." />
+              </div>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/44">Quick win</p>
+                  <p className="mt-1 text-sm leading-6 text-white/78">{section.quickWin}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/44">Implementation difficulty</p>
+                  <p className="mt-1 text-sm font-black leading-6 text-white">{section.difficulty}</p>
+                </div>
+              </div>
+            )}
+            {!(wide || isMonitoringPreview) ? (
+              <div className="rounded-2xl border border-lime/15 bg-lime/[0.05] p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-lime/80">Long-term fix</p>
+                <p className="mt-1 text-sm leading-6 text-white/78">{section.longTerm}</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-lime/15 bg-lime/[0.05] p-3 xl:col-span-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-lime/80">Long-term fix</p>
+                <p className="mt-1 text-sm leading-6 text-white/78">{section.longTerm}</p>
+              </div>
+            )}
+          </div>
         ) : null}
       </div>
 
@@ -766,10 +988,36 @@ function PremiumSectionCard({
             Locked
           </div>
           <div className="max-w-[14rem] rounded-2xl border border-white/10 bg-black/35 px-3 py-2 text-sm leading-6 text-white/82 backdrop-blur-sm">
-            Unlock to reveal {section.title.toLowerCase()}.
+            Unlock to reveal this AI finding and the recommended fixes.
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function MiniSignal({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-lime/80">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-white/74">{body}</p>
+    </div>
+  );
+}
+
+function InsightLine({
+  label,
+  value,
+  accent = "default",
+}: {
+  label: string;
+  value: string;
+  accent?: "default" | "gold";
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/24 p-3">
+      <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${accent === "gold" ? "text-gold" : "text-lime/80"}`}>{label}</p>
+      <p className="mt-1 text-sm leading-6 text-white/78 [overflow-wrap:anywhere]">{value}</p>
     </div>
   );
 }
@@ -781,7 +1029,7 @@ function PricingSection({
   checkoutError,
 }: {
   reportUnlocked: boolean;
-  onCheckout: (planId: PricingPlan["id"]) => Promise<void>;
+  onCheckout: (planId: PricingPlan["id"], auditData?: AuditInput) => Promise<void>;
   checkoutPlan: PricingPlan["id"] | null;
   checkoutError: string;
 }) {
@@ -790,22 +1038,22 @@ function PricingSection({
       <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">
-            {reportUnlocked ? "Instant full report unlocked" : "Unlock the full AI growth plan"}
+            {reportUnlocked ? "Premium report unlocked" : "Unlock AI-generated growth snapshots"}
           </p>
           <h3 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
             {reportUnlocked
-              ? "Your full AI growth report is ready."
+              ? "Your AI-generated growth snapshots and recommendations are ready."
               : "Your free scan found 3 revenue leaks. Unlock the full AI growth plan."}
           </h3>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
             {reportUnlocked
-              ? "You now have instant access to the full report, while weekly monitoring remains available below."
-              : "Get deeper AI insights, weekly monitoring, review intelligence, conversion recommendations, and competitor tracking."}
+              ? "You now have instant access to AI-generated growth snapshots and recommendations, while weekly monitoring remains available below."
+              : "Get deeper AI-generated growth snapshots and recommendations, weekly monitoring, review intelligence, conversion recommendations, and competitor tracking."}
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white/70">
           <ShieldCheck size={14} className="text-lime" />
-          Secure Stripe Checkout
+          {reportUnlocked ? "Purchase Complete" : "Secure Stripe Checkout"}
         </div>
       </div>
 
@@ -837,7 +1085,7 @@ function PricingModal({
   open: boolean;
   onClose: () => void;
   reportUnlocked: boolean;
-  onCheckout: (planId: PricingPlan["id"]) => Promise<void>;
+  onCheckout: (planId: PricingPlan["id"], auditData?: AuditInput) => Promise<void>;
   checkoutPlan: PricingPlan["id"] | null;
   checkoutError: string;
 }) {
@@ -860,18 +1108,18 @@ function PricingModal({
           >
             <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">
-                  {reportUnlocked ? "Instant full report unlocked" : "Premium unlock"}
-                </p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">
+            {reportUnlocked ? "Premium report unlocked" : "Premium unlock"}
+          </p>
                 <h3 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">
                   {reportUnlocked
-                    ? "Your full AI growth report is ready."
+                    ? "Your AI-generated growth snapshots and recommendations are ready."
                     : "Your free scan found 3 revenue leaks. Unlock the full AI growth plan."}
                 </h3>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
                   {reportUnlocked
                     ? "Instant access is already available. Weekly monitoring offers deeper ongoing visibility below."
-                    : "Get deeper AI insights, weekly monitoring, review intelligence, conversion recommendations, and competitor tracking."}
+                    : "Get deeper AI-generated growth snapshots and recommendations, weekly monitoring, review intelligence, conversion recommendations, and competitor tracking."}
                 </p>
               </div>
               <button onClick={onClose} className="self-start rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white/70 transition hover:border-lime/30 hover:bg-lime/[0.08] hover:text-white">
@@ -907,7 +1155,7 @@ function PricingCard({
   modal = false,
 }: {
   plan: PricingPlan;
-  onCheckout: (planId: PricingPlan["id"]) => Promise<void>;
+  onCheckout: (planId: PricingPlan["id"], auditData?: AuditInput) => Promise<void>;
   loading: boolean;
   reportUnlocked: boolean;
   modal?: boolean;
@@ -917,18 +1165,29 @@ function PricingCard({
   return (
     <div
       className={`group flex min-w-0 flex-col rounded-[1.6rem] border bg-[linear-gradient(145deg,rgba(255,255,255,.05),rgba(14,19,32,.92))] p-5 transition duration-300 hover:-translate-y-1 hover:border-lime/30 hover:shadow-[0_0_32px_rgba(198,255,0,.1)] sm:p-6 ${
-        unlockedReport || plan.featured ? "border-lime/30 shadow-glow" : "border-white/10"
+        unlockedReport
+          ? "border-lime/35 bg-[linear-gradient(145deg,rgba(198,255,0,.10),rgba(14,19,32,.92))] shadow-glow opacity-75"
+          : plan.featured
+            ? "border-lime/30 shadow-glow"
+            : "border-white/10"
       } ${modal ? "lg:min-h-[26rem]" : "min-h-full"}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-lime/90">
-            {unlockedReport ? "Unlocked" : plan.featured ? "Most popular" : "Plan"}
-          </p>
+          {unlockedReport ? (
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-lime/25 bg-lime/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-lime">
+              <CheckCircle2 size={12} />
+              Purchased
+            </div>
+          ) : (
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-lime/90">
+              {plan.featured ? "Most popular" : "Plan"}
+            </p>
+          )}
           <h4 className="mt-2 text-xl font-black leading-tight text-white">{plan.name}</h4>
         </div>
-        <div className="rounded-full border border-white/10 bg-white/[0.04] p-2 text-lime">
-          <CreditCard size={16} />
+        <div className={`rounded-full p-2 ${unlockedReport ? "border border-lime/25 bg-lime/15 text-lime" : "border border-white/10 bg-white/[0.04] text-lime"}`}>
+          {unlockedReport ? <CheckCircle2 size={16} /> : <CreditCard size={16} />}
         </div>
       </div>
 
@@ -937,24 +1196,37 @@ function PricingCard({
         <span className="pb-1 text-sm font-bold text-white/56">{plan.billing}</span>
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-white/64">{plan.description}</p>
+      <p className="mt-4 text-sm leading-6 text-white/64">
+        {unlockedReport ? "Purchased. Your full AI report is already unlocked above." : plan.description}
+      </p>
 
       <ul className="mt-5 space-y-2">
-        {plan.highlights.map((item) => (
-          <li key={item} className="flex items-center gap-2 text-sm text-white/72">
+        {unlockedReport ? (
+          <li className="flex items-center gap-2 text-sm text-lime">
             <CheckCircle2 size={15} className="text-lime" />
-            {item}
+            Purchased and unlocked
           </li>
-        ))}
+        ) : (
+          plan.highlights.map((item) => (
+            <li key={item} className="flex items-center gap-2 text-sm text-white/72">
+              <CheckCircle2 size={15} className="text-lime" />
+              {item}
+            </li>
+          ))
+        )}
       </ul>
 
       <button
         onClick={() => onCheckout(plan.id)}
         disabled={loading || unlockedReport}
-        className="group mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-4 text-sm font-black uppercase tracking-[-0.01em] text-ink shadow-[0_0_42px_rgba(198,255,0,.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_64px_rgba(198,255,0,.42)] disabled:cursor-not-allowed disabled:opacity-70"
+        className={`group mt-6 flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-[-0.01em] transition duration-300 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 ${
+          unlockedReport
+            ? "border border-lime/25 bg-lime/15 text-lime shadow-none hover:translate-y-0"
+            : "bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] text-ink shadow-[0_0_42px_rgba(198,255,0,.28)] hover:shadow-[0_0_64px_rgba(198,255,0,.42)]"
+        }`}
       >
         {loading ? <Loader2 size={18} className="animate-spin" /> : null}
-        {unlockedReport ? "Included" : plan.cta}
+        {unlockedReport ? "Purchased" : plan.cta}
         {!loading && !unlockedReport ? <ArrowRight size={17} className="transition group-hover:translate-x-1" /> : null}
       </button>
     </div>

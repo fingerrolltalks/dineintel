@@ -3,6 +3,8 @@ export type AuditInput = {
   website: string;
   instagram: string;
   tiktok?: string;
+  cuisine?: string;
+  city?: string;
 };
 
 export type AuditCategory = {
@@ -13,15 +15,45 @@ export type AuditCategory = {
   fix: string;
 };
 
+export type AuditScoreTrend = {
+  previous: number;
+  current: number;
+  delta: number;
+};
+
 export type AuditOpportunity = {
   title: string;
   detail: string;
   impact: "High" | "Medium";
+  evidenceFound?: string;
+  whyItMatters?: string;
+  quickFix?: string;
 };
 
 export type AuditResult = {
   score: number;
   headline: string;
+  scores?: {
+    visibility: number;
+    trust: number;
+    conversion: number;
+    menuOrdering: number;
+    socialPresence: number;
+  };
+  monitoring?: {
+    previousAuditId: string | null;
+    scanType: "one_time" | "recurring";
+    monitoringPlan: "starter" | "pro" | null;
+    whatImproved: string[];
+    newIssuesFound: string[];
+    scoreChanges: {
+      visibility: AuditScoreTrend;
+      trust: AuditScoreTrend;
+      conversion: AuditScoreTrend;
+      socialPresence: AuditScoreTrend;
+      menuOrdering: AuditScoreTrend;
+    };
+  };
   opportunities: AuditOpportunity[];
   categories: AuditCategory[];
 };
@@ -44,6 +76,13 @@ export function generateAudit(input: AuditInput): AuditResult {
   return {
     score,
     headline: `${input.restaurant || "Your restaurant"} may be losing customers from these 3 issues.`,
+    scores: {
+      visibility,
+      trust: reputation,
+      conversion,
+      menuOrdering: clamp(conversion + (hasSecureWebsite ? 2 : -2)),
+      socialPresence: social,
+    },
     opportunities: [
       {
         title: "Put ordering and reservations above the fold",

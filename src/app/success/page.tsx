@@ -6,6 +6,7 @@ export default async function SuccessPage({
 }: {
   searchParams?: Promise<{
     plan?: string;
+    session_id?: string;
   }>;
 }) {
   const params = (await searchParams) ?? {};
@@ -18,14 +19,26 @@ export default async function SuccessPage({
           <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-lime/10 text-lime ring-1 ring-lime/20">
             <CheckCircle2 size={34} />
           </div>
-          <p className="mt-6 text-xs font-black uppercase tracking-[0.18em] text-lime">Payment complete</p>
-          <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">Payment confirmed. Your DineIntel growth plan is ready.</h1>
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.18em] text-lime">Purchase Complete</p>
+          <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">
+            Full Growth Plan Unlocked
+          </h1>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/68 sm:text-base">
             {isReportPurchase
-              ? "Your instant full report unlock is ready right now."
-              : "You can return to the scanner or keep using the report workflow anytime."}
+              ? "Your AI-generated growth snapshots and recommendations are unlocked and ready to view."
+              : "Your purchase is complete and your DineIntel workspace is ready."}
           </p>
-          <SuccessActions isReportPurchase={isReportPurchase} />
+          <div className="mx-auto mt-6 flex w-fit items-center gap-2 rounded-full border border-lime/20 bg-lime/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-lime">
+            <CheckCircle2 size={14} />
+            Full Growth Plan Unlocked
+          </div>
+          <p className="mt-5 text-sm text-white/58">
+            Support email:{" "}
+            <a href="mailto:boxyagent1@gmail.com" className="text-lime transition hover:text-white">
+              boxyagent1@gmail.com
+            </a>
+          </p>
+          <SuccessActions isReportPurchase={isReportPurchase} sessionId={params.session_id ?? null} />
         </section>
       </div>
     </main>

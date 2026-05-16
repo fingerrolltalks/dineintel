@@ -5,12 +5,18 @@ import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { setReportUnlocked } from "@/lib/report-session";
 
-export default function SuccessActions({ isReportPurchase }: { isReportPurchase: boolean }) {
+export default function SuccessActions({
+  isReportPurchase,
+  sessionId,
+}: {
+  isReportPurchase: boolean;
+  sessionId: string | null;
+}) {
   const router = useRouter();
 
   function viewReport() {
     setReportUnlocked(isReportPurchase);
-    router.push(isReportPurchase ? "/?report=full" : "/");
+    router.push(isReportPurchase ? `/?report=full${sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : ""}` : "/");
   }
 
   return (
@@ -19,7 +25,7 @@ export default function SuccessActions({ isReportPurchase }: { isReportPurchase:
         onClick={viewReport}
         className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-4 text-sm font-black uppercase text-ink shadow-[0_0_42px_rgba(198,255,0,.28)] transition hover:-translate-y-0.5"
       >
-        {isReportPurchase ? "View My Full Report" : "Return to DineIntel"}
+        {isReportPurchase ? "Return to Report" : "Return to DineIntel"}
         <ArrowRight size={17} className="transition group-hover:translate-x-1" />
       </button>
       <Link
