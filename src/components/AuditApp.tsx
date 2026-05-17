@@ -48,6 +48,9 @@ const scanSteps = [
   },
 ];
 
+const brandName = "DineLeak";
+const mainCtaLabel = "Run Free Leak Scan";
+
 const categoryIcons = {
   Visibility: Globe2,
   Conversion: MousePointerClick,
@@ -443,10 +446,10 @@ export default function AuditApp() {
           <div className="grid size-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#9DFF00)] text-ink shadow-[0_0_32px_rgba(198,255,0,.42)] transition duration-300 hover:rotate-[-4deg] hover:scale-105">
             <ChefHat size={23} />
           </div>
-          <span className="text-2xl font-black tracking-[-0.04em]">DineIntel</span>
+          <span className="text-2xl font-black tracking-[-0.04em]">{brandName}</span>
         </div>
         <a href="#audit" className="rounded-full border border-lime/25 bg-white/[0.04] px-5 py-2.5 text-sm font-black text-white/86 shadow-[inset_0_1px_0_rgba(255,255,255,.07)] transition hover:border-lime/65 hover:bg-lime/10 hover:text-white">
-          Scan now
+          {mainCtaLabel}
         </a>
       </nav>
 
@@ -454,14 +457,14 @@ export default function AuditApp() {
         <motion.div className="min-w-0 lg:pt-8" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-lime/30 bg-lime/[0.07] px-4 py-2 text-[11px] font-black uppercase tracking-[0.11em] text-lime shadow-[0_0_28px_rgba(198,255,0,.12)]">
             <span className="size-2 rounded-full bg-lime shadow-[0_0_16px_rgba(198,255,0,.9)]" />
-            Free 60-second growth scan
+            Free 60-second leak scan
           </div>
           <h1 className="max-w-5xl text-[3.15rem] font-extrabold uppercase leading-[0.94] tracking-[-0.062em] text-white sm:text-[4.75rem] lg:text-[4.05rem] xl:text-[4.95rem]">
             Your restaurant is
             <span className="neon-headline block">leaking revenue.</span>
           </h1>
           <p className="mt-6 max-w-[41rem] text-base leading-7 text-white/74 sm:text-lg sm:leading-8">
-            DineIntel generates AI-generated growth snapshots and recommendations from your restaurant’s public presence to identify hidden customer friction, trust gaps, and lost revenue opportunities before guests choose somewhere else.
+            {brandName} generates AI-generated growth snapshots and recommendations from your restaurant’s public presence to identify hidden customer friction, trust gaps, and lost revenue opportunities before guests choose somewhere else.
           </p>
           <div className="mt-7 grid min-w-0 gap-3 sm:grid-cols-3">
             {[
@@ -480,7 +483,7 @@ export default function AuditApp() {
           </div>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a href="#audit" className="group inline-flex items-center justify-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-7 py-5 text-base font-black uppercase tracking-[-0.015em] text-ink shadow-[0_0_48px_rgba(198,255,0,.34)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_0_72px_rgba(198,255,0,.46)]">
-              Scan my restaurant
+              {mainCtaLabel}
               <ArrowRight className="transition group-hover:translate-x-1.5" size={21} />
             </a>
             <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-5 py-4 text-sm leading-6 text-white/64">
@@ -527,7 +530,7 @@ export default function AuditApp() {
                     <Input label="Instagram" value={form.instagram} onChange={(instagram) => setForm({ ...form, instagram })} placeholder="@restaurant" required />
                     <Input label="TikTok optional" value={form.tiktok || ""} onChange={(tiktok) => setForm({ ...form, tiktok })} placeholder="@restaurant" />
                     <button className="group mt-3 flex w-full items-center justify-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-5 text-base font-black uppercase text-ink shadow-[0_0_46px_rgba(198,255,0,.34)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_0_72px_rgba(198,255,0,.46)] focus:outline-none focus:ring-4 focus:ring-lime/25">
-                      Reveal my leaks
+                      {mainCtaLabel}
                       <ArrowRight className="transition group-hover:translate-x-1.5" size={21} />
                     </button>
                     <p className="text-center text-xs leading-5 text-white/44">Private preview. No login. No subscription.</p>
@@ -849,7 +852,7 @@ function Results({
         <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-center sm:p-6 lg:mt-8">
           <p className="text-base font-bold leading-7 text-white/74">Report preview complete. The fastest path is fixing the top opportunity first, then using the score cards as your weekly growth checklist.</p>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <button onClick={openPricing} className="w-full rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-4 font-black uppercase text-ink shadow-[0_0_42px_rgba(198,255,0,.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_62px_rgba(198,255,0,.4)] sm:w-auto">
+              <button onClick={openPricing} className="w-full rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-4 font-black uppercase text-ink shadow-[0_0_42px_rgba(198,255,0,.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_62px_rgba(198,255,0,.4)] sm:w-auto">
               {reportUnlocked ? "Full Growth Plan Unlocked" : "Unlock Full Growth Plan"}
             </button>
             <button onClick={restart} className="w-full rounded-2xl border border-white/15 bg-white/[0.035] px-5 py-4 font-black uppercase text-white/80 transition duration-300 hover:-translate-y-0.5 hover:border-lime/50 hover:bg-lime/[0.06] hover:text-white sm:w-auto">

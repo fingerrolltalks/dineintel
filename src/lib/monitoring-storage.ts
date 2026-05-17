@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import { getSql, requireSql } from "@/lib/database";
 import type { StripePurchaseRecord } from "@/lib/stripe-purchase-log";
 
 type MonitoringPlan = "starter" | "pro";
@@ -28,12 +28,6 @@ export type RecurringMonitoringSubscription = {
 };
 
 let schemaReady: Promise<void> | null = null;
-
-function getSql() {
-  const databaseUrl = process.env.DATABASE_URL?.trim();
-  if (!databaseUrl) return null;
-  return neon(databaseUrl);
-}
 
 function normalize(value?: string | null) {
   return value?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
@@ -119,7 +113,7 @@ export async function upsertMonitoringSubscriptionFromPurchase(record: StripePur
   }
 
   const plan = record.productType as MonitoringPlan;
-  const sql = getSql();
+  const sql = requireSql("creating recurring monitoring subscriptions");
   if (!sql) return null;
 
   await ensureSchema();
@@ -208,7 +202,7 @@ export async function upsertMonitoringSubscriptionFromPurchase(record: StripePur
 }
 
 export async function listDueRecurringSubscriptions(limit = 25) {
-  const sql = getSql();
+  const sql = requireSql("listing due recurring subscriptions");
   if (!sql) return [];
 
   await ensureSchema();

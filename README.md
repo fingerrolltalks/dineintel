@@ -1,8 +1,8 @@
-# DineIntel
+# DineLeak
 
 Premium no-login restaurant growth audit MVP.
 
-DineIntel helps restaurant owners quickly understand what may be hurting online visibility, customer conversion, reviews, social activity, and retention.
+DineLeak helps restaurant owners quickly understand what may be hurting online visibility, customer conversion, reviews, social activity, and retention.
 
 ## Stack
 
@@ -53,7 +53,7 @@ STRIPE_PRICE_PRO=
 `CRON_SECRET` protects the recurring monitoring cron route in production.
 `STRIPE_SECRET_KEY` stays server-side only. Use the Stripe test price IDs in the test `STRIPE_PRICE_*` variables for local checkout testing.
 `STRIPE_WEBHOOK_SECRET` is needed for Stripe webhook verification in both local testing and production.
-`DATABASE_URL` stores completed purchases server-side so unlocks can persist across refreshes and devices.
+`DATABASE_URL` stores completed purchases, audits, and recurring monitoring schedules in Postgres.
 
 Live Stripe price IDs:
 
@@ -66,7 +66,7 @@ Live Stripe price IDs:
 Set these manually in Vercel for production:
 
 ```text
-NEXT_PUBLIC_APP_URL=https://dineintel.app
+NEXT_PUBLIC_APP_URL=https://dineleak.app
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 DATABASE_URL=postgresql://...
@@ -79,8 +79,18 @@ Test vs live:
 
 - Test local env: `sk_test_...` + `STRIPE_PRICE_DETAILED_REPORT`, `STRIPE_PRICE_STARTER_MONITOR`, `STRIPE_PRICE_PRO_MONITOR`
 - Live Vercel env: `sk_live_...` + `STRIPE_PRICE_REPORT`, `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_PRO`
-- Keep `NEXT_PUBLIC_APP_URL` set to the live domain in production
-- Add `DATABASE_URL` in both local and production if you want unlock persistence across devices
+- Keep `NEXT_PUBLIC_APP_URL` set to `https://dineleak.app` in production
+- Add `DATABASE_URL` in Vercel before accepting paid customers. The app uses it for purchase unlocks, audit history, and recurring scans.
+
+## Database
+
+Use Vercel Marketplace Neon Postgres for production. Once `DATABASE_URL` is set, the app creates the required tables automatically.
+
+Protected database check:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://dineleak.app/api/database/health
+```
 
 ## Deploy
 

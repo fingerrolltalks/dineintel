@@ -16,8 +16,8 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return NextResponse.json({ error: "Stripe is not configured." }, { status: 500 });
+    if (!process.env.STRIPE_SECRET_KEY?.trim()) {
+      return NextResponse.json({ error: "Missing STRIPE_SECRET_KEY" }, { status: 500 });
     }
 
     const body = (await request.json()) as CheckoutBody;
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       restaurant_tiktok: body.restaurantTikTok?.trim() || "",
       restaurant_cuisine: body.cuisine?.trim() || "",
       restaurant_city: body.city?.trim() || "",
-      source: "DineIntel",
+      source: "DineLeak",
     };
 
     console.info("[dineintel] stripe checkout started", {

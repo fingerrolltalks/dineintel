@@ -125,7 +125,7 @@ export async function fetchWebsiteSnapshot(rawUrl: string): Promise<WebsiteAudit
     const response = await fetch(parsedUrl.toString(), {
       redirect: "follow",
       headers: {
-        "user-agent": "DineIntelBot/1.0 (+https://dineintel.app)",
+        "user-agent": "DineLeakBot/1.0 (+https://dineleak.app)",
         accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
       signal: controller.signal,

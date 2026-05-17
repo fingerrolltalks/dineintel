@@ -26,7 +26,7 @@ export default async function SuccessPage({
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/68 sm:text-base">
             {isReportPurchase
               ? "Your AI-generated growth snapshots and recommendations are unlocked and ready to view."
-              : "Your purchase is complete and your DineIntel workspace is ready."}
+              : "Your purchase is complete and your DineLeak workspace is ready."}
           </p>
           <div className="mx-auto mt-6 flex w-fit items-center gap-2 rounded-full border border-lime/20 bg-lime/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-lime">
             <CheckCircle2 size={14} />

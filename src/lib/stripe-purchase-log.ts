@@ -1,7 +1,7 @@
 import type Stripe from "stripe";
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { neon } from "@neondatabase/serverless";
+import { getSql, requireSql } from "@/lib/database";
 import type { CheckoutPlanId } from "@/lib/stripe";
 import { upsertMonitoringSubscriptionFromPurchase } from "@/lib/monitoring-storage";
 
@@ -47,12 +47,6 @@ type PurchaseAccess = {
 };
 
 let schemaReady: Promise<void> | null = null;
-
-function getSql() {
-  const databaseUrl = process.env.DATABASE_URL?.trim();
-  if (!databaseUrl) return null;
-  return neon(databaseUrl);
-}
 
 function normalize(value?: string | null) {
   return value?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
@@ -208,7 +202,7 @@ async function appendPurchaseRecord(record: StripePurchaseRecord) {
 }
 
 async function writePurchaseToDatabase(record: StripePurchaseRecord) {
-  const sql = getSql();
+  const sql = requireSql("recording Stripe purchases");
   if (!sql) return false;
 
   await ensureSchema();

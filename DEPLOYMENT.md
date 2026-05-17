@@ -1,4 +1,4 @@
-# DineIntel Deployment Notes
+# DineLeak Deployment Notes
 
 ## Preflight
 
@@ -14,7 +14,7 @@ npm run build
 Repository:
 
 ```text
-https://github.com/fingerrolltalks/dineintel
+Connected GitHub repository
 ```
 
 ## Vercel Settings
@@ -30,7 +30,7 @@ https://github.com/fingerrolltalks/dineintel
 Set these in Vercel for production:
 
 ```text
-NEXT_PUBLIC_APP_URL=https://dineintel.app
+NEXT_PUBLIC_APP_URL=https://dineleak.app
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o-mini
 CRON_SECRET=some-long-random-string
@@ -64,6 +64,26 @@ OPENAI_API_KEY
 CRON_SECRET
 ```
 
+## Database
+
+Production needs a Postgres `DATABASE_URL`.
+
+Recommended setup:
+
+1. Open the Vercel project dashboard.
+2. Go to Storage / Marketplace.
+3. Add Neon Postgres.
+4. Connect it to the `dineleak` project.
+5. Confirm Vercel adds `DATABASE_URL` to Production.
+
+After deployment, verify database readiness:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://dineleak.app/api/database/health
+```
+
+The health route verifies the connection and creates the DineLeak tables if needed.
+
 ## Production Verification
 
 After deployment:
@@ -74,5 +94,5 @@ After deployment:
 - Confirm scan animation reaches results.
 - Confirm results cards render.
 - Check mobile viewport in browser dev tools.
-- Confirm Stripe checkout returns to `https://dineintel.app/success`.
+- Confirm Stripe checkout returns to `https://dineleak.app/success`.
 - Confirm webhook logs appear for `checkout.session.completed`.

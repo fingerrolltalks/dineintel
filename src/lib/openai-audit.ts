@@ -129,7 +129,7 @@ export async function generateOpenAIAuditWithOptions(
   options: GenerateOpenAIAuditOptions,
 ): Promise<AuditResult | null> {
   if (!openaiClient) {
-    console.warn("[dineintel] openai audit skipped: OPENAI_API_KEY missing");
+    console.warn("[dineleak] openai audit skipped: OPENAI_API_KEY missing");
     return null;
   }
 
@@ -155,7 +155,7 @@ This is a recurring scan. Emphasize what changed since the last run.`
         {
           model,
           instructions:
-            "You are DineIntel, a premium restaurant growth analyst. Use the provided website snapshot as the primary evidence. Produce concise, sharp, investor-ready restaurant findings. Focus on revenue leaks, conversion, reviews, local visibility, social content, and retention. Keep the tone premium, specific, and actionable. Avoid repetitive generic advice and vary wording across restaurants. Output only valid JSON that matches the schema.",
+            "You are DineLeak, a premium restaurant growth analyst. Use the provided website snapshot as the primary evidence. Produce concise, sharp, investor-ready restaurant findings. Focus on revenue leaks, conversion, reviews, local visibility, social content, and retention. Keep the tone premium, specific, and actionable. Avoid repetitive generic advice and vary wording across restaurants. Output only valid JSON that matches the schema.",
           input: `Restaurant audit input:
 ${JSON.stringify(
   {
@@ -206,7 +206,7 @@ Rules:
 
       const parsed = JSON.parse(response.output_text) as unknown;
       if (!isAuditResult(parsed)) return null;
-      console.info("[dineintel] openai audit succeeded", {
+      console.info("[dineleak] openai audit succeeded", {
         restaurant: input.restaurant,
         model,
         attempt: attempt + 1,
@@ -219,7 +219,7 @@ Rules:
       const shouldRetry = attempt < retries && (isRateLimit || isTimeout);
 
       if (shouldRetry) {
-        console.warn("[dineintel] openai audit retrying after transient failure", {
+        console.warn("[dineleak] openai audit retrying after transient failure", {
           restaurant: input.restaurant,
           attempt: attempt + 1,
         });
@@ -228,15 +228,15 @@ Rules:
       }
 
       if (isRateLimit) {
-        console.warn("[dineintel] openai audit rate limited, falling back to template", {
+        console.warn("[dineleak] openai audit rate limited, falling back to template", {
           restaurant: input.restaurant,
         });
       } else if (isTimeout) {
-        console.warn("[dineintel] openai audit timed out, falling back to template", {
+        console.warn("[dineleak] openai audit timed out, falling back to template", {
           restaurant: input.restaurant,
         });
       } else {
-        console.error("[dineintel] openai audit error", error);
+        console.error("[dineleak] openai audit error", error);
       }
       return null;
     } finally {

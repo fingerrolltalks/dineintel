@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { neon } from "@neondatabase/serverless";
 import type { AuditInput, AuditResult } from "@/lib/audit";
+import { getSql, requireSql } from "@/lib/database";
 import type { WebsiteAuditSnapshot } from "@/lib/website-snapshot";
 
 type AuditRecord = {
@@ -35,12 +35,6 @@ export type StoredAuditRun = {
 };
 
 let schemaReady: Promise<void> | null = null;
-
-function getSql() {
-  const databaseUrl = process.env.DATABASE_URL?.trim();
-  if (!databaseUrl) return null;
-  return neon(databaseUrl);
-}
 
 async function ensureSchema() {
   const sql = getSql();
@@ -138,7 +132,7 @@ export async function saveAuditRun(payload: {
     createdAt: new Date().toISOString(),
   };
 
-  const sql = getSql();
+  const sql = requireSql("saving audit runs");
   if (sql) {
     await ensureSchema();
     await sql`
