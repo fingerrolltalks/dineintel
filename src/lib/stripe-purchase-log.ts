@@ -46,6 +46,11 @@ type PurchaseAccess = {
   matchedBy: string | null;
 };
 
+export type PurchaseStatus = {
+  found: boolean;
+  record: StripePurchaseRecord | null;
+};
+
 let schemaReady: Promise<void> | null = null;
 
 function normalize(value?: string | null) {
@@ -372,4 +377,52 @@ export async function findReportPurchase(lookup: PurchaseLookup): Promise<Purcha
       record: fallbackRecord,
     }
     : { unlocked: false, matchedBy: null, record: null };
+}
+
+export async function findPurchaseBySessionId(sessionId: string): Promise<PurchaseStatus> {
+  const sql = getSql();
+
+  if (sql) {
+    await ensureSchema();
+
+    const [record] = await sql`
+      SELECT *
+      FROM dineintel_purchases
+      WHERE session_id = ${sessionId}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    if (record) {
+      return {
+        found: true,
+        record: {
+          recordId: record.record_id,
+          sessionId: record.session_id,
+          invoiceId: record.invoice_id,
+          subscriptionId: record.subscription_id,
+          customerEmail: record.customer_email,
+          productName: record.product_name,
+          priceId: record.price_id,
+          amountPaid: record.amount_paid,
+          paymentStatus: record.payment_status,
+          createdAt: record.created_at,
+          restaurantName: record.restaurant_name,
+          restaurantWebsite: record.restaurant_website,
+          restaurantSocial: record.restaurant_social,
+          restaurantInstagram: record.restaurant_instagram,
+          restaurantTikTok: record.restaurant_tiktok,
+          restaurantCuisine: record.restaurant_cuisine,
+          restaurantCity: record.restaurant_city,
+          productType: record.product_type,
+          currency: record.currency,
+          sourceEvent: record.source_event as StripePurchaseRecord["sourceEvent"],
+        },
+      };
+    }
+  }
+
+  const fallbackRecord = (globalThis.__dineleakStripePurchases ?? []).find((record) => record.sessionId === sessionId) ?? null;
+
+  return fallbackRecord ? { found: true, record: fallbackRecord } : { found: false, record: null };
 }

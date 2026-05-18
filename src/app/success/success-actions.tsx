@@ -37,14 +37,14 @@ export default function SuccessActions({
         onClick={viewReport}
         className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-4 text-sm font-black uppercase text-ink shadow-[0_0_42px_rgba(198,255,0,.28)] transition hover:-translate-y-0.5"
       >
-        {isReportPurchase ? "Return to Report" : "Return to DineLeak"}
+        {isReportPurchase ? "Open Report" : "Go to homepage"}
         <ArrowRight size={17} className="transition group-hover:translate-x-1" />
       </button>
       <Link
         href="/"
         className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] px-5 py-4 text-sm font-black uppercase text-white/80 transition hover:border-lime/40 hover:bg-lime/[0.06] hover:text-white"
       >
-        Back to leak scan
+        Back to homepage
       </Link>
     </div>
   );
