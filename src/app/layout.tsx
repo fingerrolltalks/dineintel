@@ -1,30 +1,54 @@
 import type { Metadata } from "next";
+import Script from "next/script";
+import { Suspense } from "react";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { SiteFooter } from "@/components/SiteFooter";
+import { GA_MEASUREMENT_ID, isGoogleAnalyticsEnabled } from "@/lib/analytics";
 import "./globals.css";
 
 const siteUrl = new URL("https://dineleak.app");
-const tagline = "Find where your restaurant is leaking customers, orders, and revenue online.";
 
 export const metadata: Metadata = {
+  applicationName: "DineLeak",
   metadataBase: siteUrl,
   title: {
-    default: "DineLeak | Restaurant Growth Audit",
+    default: "DineLeak | Restaurant Growth Scanner",
     template: "%s | DineLeak",
   },
-  description: tagline,
+  description: "Restaurant growth scanner and audit platform for spotting leaks in visibility, conversion, reviews, social, and retention.",
+  keywords: ["DineLeak", "restaurant growth audit", "restaurant SEO", "restaurant marketing", "conversion audit"],
   alternates: {
     canonical: "/",
   },
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
-    title: "DineLeak | Restaurant Growth Audit",
-    description: tagline,
+    title: "DineLeak | Restaurant Growth Scanner",
+    description: "Restaurant growth scanner and audit platform for spotting leaks in visibility, conversion, reviews, social, and retention.",
     url: siteUrl,
     siteName: "DineLeak",
     type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "DineLeak restaurant growth audit",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "DineLeak | Restaurant Growth Audit",
-    description: tagline,
+    title: "DineLeak | Restaurant Growth Scanner",
+    description: "Restaurant growth scanner and audit platform for spotting leaks in visibility, conversion, reviews, social, and retention.",
+    images: ["/og-image.png"],
   },
 };
 
@@ -35,7 +59,25 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <SiteFooter />
+        {isGoogleAnalyticsEnabled() ? (
+        <>
+          <Script
+            id="ga4-loader"
+            strategy="afterInteractive"
+            src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+          />
+          <Script id="ga4-init" strategy="afterInteractive">
+            {`window.dataLayer = window.dataLayer || [];function gtag(){window.dataLayer.push(arguments);}window.gtag = gtag;gtag('js', new Date());gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });`}
+          </Script>
+          <Suspense fallback={null}>
+            <GoogleAnalytics />
+          </Suspense>
+        </>
+        ) : null}
+      </body>
     </html>
   );
 }

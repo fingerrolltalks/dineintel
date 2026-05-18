@@ -34,8 +34,8 @@ export default async function SuccessPage({
           </div>
           <p className="mt-5 text-sm text-white/58">
             Support email:{" "}
-            <a href="mailto:boxyagent1@gmail.com" className="text-lime transition hover:text-white">
-              boxyagent1@gmail.com
+            <a href="mailto:dineleak@gmail.com" className="text-lime transition hover:text-white">
+              dineleak@gmail.com
             </a>
           </p>
           <SuccessActions isReportPurchase={isReportPurchase} sessionId={params.session_id ?? null} />

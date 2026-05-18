@@ -2,7 +2,7 @@ import { requireSql } from "@/lib/database";
 
 let schemaReady: Promise<void> | null = null;
 
-export async function ensureDineIntelDatabaseSchema() {
+export async function ensureDineLeakDatabaseSchema() {
   const sql = requireSql("database schema setup");
   if (!sql) return false;
 
@@ -93,15 +93,19 @@ export async function ensureDineIntelDatabaseSchema() {
         interval_days integer NOT NULL,
         next_scan_at timestamptz NOT NULL,
         last_scan_at timestamptz,
+        last_attempt_at timestamptz,
         last_audit_id text,
         stripe_status text,
         active boolean NOT NULL DEFAULT true,
         scan_count integer NOT NULL DEFAULT 0,
+        retry_count integer NOT NULL DEFAULT 0,
         last_error text,
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )
     `;
+    await sql`ALTER TABLE dineintel_monitoring_subscriptions ADD COLUMN IF NOT EXISTS last_attempt_at timestamptz`;
+    await sql`ALTER TABLE dineintel_monitoring_subscriptions ADD COLUMN IF NOT EXISTS retry_count integer NOT NULL DEFAULT 0`;
     await sql`CREATE INDEX IF NOT EXISTS dineintel_monitoring_due_idx ON dineintel_monitoring_subscriptions (active, next_scan_at)`;
     await sql`CREATE INDEX IF NOT EXISTS dineintel_monitoring_restaurant_idx ON dineintel_monitoring_subscriptions (restaurant_name_norm, restaurant_website_norm)`;
   })();

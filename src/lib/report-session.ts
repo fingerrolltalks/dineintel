@@ -1,7 +1,7 @@
 import type { AuditResult } from "@/lib/audit";
 
-const REPORT_RESULT_KEY = "dineintel-report-result";
-const REPORT_UNLOCK_KEY = "dineintel-report-unlocked";
+const REPORT_RESULT_KEY = "dineleak-report-result";
+const REPORT_UNLOCK_KEY = "dineleak-report-unlocked";
 
 function isBrowser() {
   return typeof window !== "undefined";

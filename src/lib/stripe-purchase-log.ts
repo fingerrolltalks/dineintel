@@ -29,8 +29,8 @@ export type StripePurchaseRecord = {
 };
 
 declare global {
-  var __dineintelStripePurchases: StripePurchaseRecord[] | undefined;
-  var __dineintelStripeEvents: Set<string> | undefined;
+  var __dineleakStripePurchases: StripePurchaseRecord[] | undefined;
+  var __dineleakStripeEvents: Set<string> | undefined;
 }
 
 type PurchaseLookup = {
@@ -121,9 +121,9 @@ export async function claimStripeEvent(eventId: string, eventType: string) {
     return Boolean(claimed);
   }
 
-  globalThis.__dineintelStripeEvents ??= new Set<string>();
-  if (globalThis.__dineintelStripeEvents.has(eventId)) return false;
-  globalThis.__dineintelStripeEvents.add(eventId);
+  globalThis.__dineleakStripeEvents ??= new Set<string>();
+  if (globalThis.__dineleakStripeEvents.has(eventId)) return false;
+  globalThis.__dineleakStripeEvents.add(eventId);
   return true;
 }
 
@@ -194,7 +194,7 @@ export function buildInvoicePurchaseRecord(
   };
 }
 
-const purchaseLogPath = join("/tmp", "dineintel", "stripe-purchases.jsonl");
+const purchaseLogPath = join("/tmp", "dineleak", "stripe-purchases.jsonl");
 
 async function appendPurchaseRecord(record: StripePurchaseRecord) {
   await mkdir(dirname(purchaseLogPath), { recursive: true });
@@ -289,14 +289,14 @@ async function writePurchaseToDatabase(record: StripePurchaseRecord) {
 }
 
 export async function recordStripePurchase(record: StripePurchaseRecord) {
-  console.info("[dineintel] stripe purchase recorded", record);
+  console.info("[dineleak] stripe purchase recorded", record);
   await writePurchaseToDatabase(record);
   await appendPurchaseRecord(record);
   await upsertMonitoringSubscriptionFromPurchase(record);
 
   if (process.env.NODE_ENV !== "production") {
-    globalThis.__dineintelStripePurchases ??= [];
-    globalThis.__dineintelStripePurchases.push(record);
+    globalThis.__dineleakStripePurchases ??= [];
+    globalThis.__dineleakStripePurchases.push(record);
   }
 }
 
@@ -354,7 +354,7 @@ export async function findReportPurchase(lookup: PurchaseLookup): Promise<Purcha
     }
   }
 
-  const fallbackRecord = (globalThis.__dineintelStripePurchases ?? []).find((record) => {
+  const fallbackRecord = (globalThis.__dineleakStripePurchases ?? []).find((record) => {
     if (record.productType !== "report") return false;
     if (record.paymentStatus && !["paid", "complete", "succeeded"].includes(record.paymentStatus)) return false;
     if (lookup.sessionId && record.sessionId === lookup.sessionId) return true;

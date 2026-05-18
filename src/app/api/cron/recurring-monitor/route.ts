@@ -3,6 +3,7 @@ import { generateAudit, type AuditInput } from "@/lib/audit";
 import { buildMonitoringSummary } from "@/lib/audit-history";
 import { saveAuditRun, findLatestAuditRunByRestaurant, findLatestAuditRunBySubscriptionId } from "@/lib/audit-storage";
 import { generateOpenAIAuditWithOptions } from "@/lib/openai-audit";
+import { fetchGoogleAuditSignals } from "@/lib/google-signals";
 import {
   findRecurringSubscription,
   listDueRecurringSubscriptions,
@@ -11,7 +12,7 @@ import {
   setRecurringSubscriptionInactive,
 } from "@/lib/monitoring-storage";
 import { fetchWebsiteSnapshot } from "@/lib/website-snapshot";
-import { getStripe } from "@/lib/stripe";
+import { getPlanPriceId, getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,7 +53,7 @@ async function processRecurringSubscription(subscriptionId: string) {
     return { processed: false, reason: "missing-subscription" };
   }
 
-  console.info("[dineintel] recurring scan started", {
+  console.info("[dineleak] recurring scan started", {
     subscriptionId,
     restaurantName: monitoringSubscription.restaurantName,
     productType: monitoringSubscription.productType,
@@ -66,12 +67,33 @@ async function processRecurringSubscription(subscriptionId: string) {
         stripeStatus: stripeSubscription.status,
       });
 
-      console.info("[dineintel] recurring scan skipped inactive subscription", {
+      console.info("[dineleak] recurring scan skipped inactive subscription", {
         subscriptionId,
         stripeStatus: stripeSubscription.status,
       });
 
       return { processed: false, reason: "inactive-subscription" };
+    }
+
+    const expectedPriceId = getPlanPriceId(monitoringSubscription.productType).priceId;
+    const activePriceIds = stripeSubscription.items.data
+      .map((item) => item.price?.id ?? null)
+      .filter((priceId): priceId is string => Boolean(priceId));
+
+    if (!activePriceIds.includes(expectedPriceId)) {
+      await setRecurringSubscriptionInactive({
+        subscriptionId,
+        stripeStatus: stripeSubscription.status,
+      });
+
+      console.error("[dineleak] recurring scan price mismatch", {
+        subscriptionId,
+        productType: monitoringSubscription.productType,
+        expectedPriceId,
+        activePriceIds,
+      });
+
+      return { processed: false, reason: "price-mismatch" };
     }
 
     const input = buildInputFromSubscription(monitoringSubscription);
@@ -83,11 +105,19 @@ async function processRecurringSubscription(subscriptionId: string) {
       (await findLatestAuditRunBySubscriptionId(subscriptionId)) ??
       (await findLatestAuditRunByRestaurant(input.restaurant, input.website));
 
-    const snapshot = await fetchWebsiteSnapshot(input.website);
-    const aiResult = await generateOpenAIAuditWithOptions(input, snapshot, {
+    const [snapshot, googleSignals] = await Promise.all([
+      fetchWebsiteSnapshot(input.website),
+      fetchGoogleAuditSignals(input),
+    ]);
+    const enrichedSnapshot = {
+      ...snapshot,
+      googleSignals,
+    };
+    const aiResult = await generateOpenAIAuditWithOptions(input, enrichedSnapshot, {
       previousAudit: previousAudit?.result ?? null,
       monitoringPlan: monitoringSubscription.productType,
       retries: 1,
+      googleSignals,
     });
     const result = aiResult ?? generateAudit(input);
     const monitoring = buildMonitoringSummary(previousAudit?.result ?? null, result);
@@ -96,7 +126,7 @@ async function processRecurringSubscription(subscriptionId: string) {
 
     const savedAudit = await saveAuditRun({
       input,
-      snapshot,
+      snapshot: enrichedSnapshot,
       result: {
         ...result,
         monitoring,
@@ -117,10 +147,11 @@ async function processRecurringSubscription(subscriptionId: string) {
       nextScanAt: getNextScanAt(monitoringSubscription.productType),
     });
 
-    console.info("[dineintel] recurring scan completed", {
+    console.info("[dineleak] recurring scan completed", {
       subscriptionId,
       auditId: savedAudit.auditId,
       generatedBy: aiResult ? "openai" : "template",
+      nextScanAt: getNextScanAt(monitoringSubscription.productType),
     });
 
     return { processed: true };
@@ -131,7 +162,7 @@ async function processRecurringSubscription(subscriptionId: string) {
       error: message,
     });
 
-    console.error("[dineintel] recurring scan failed", {
+    console.error("[dineleak] recurring scan failed", {
       subscriptionId,
       error: message,
     });
@@ -142,27 +173,51 @@ async function processRecurringSubscription(subscriptionId: string) {
 
 async function handleCron(request: Request) {
   if (!isAuthorized(request)) {
+    console.warn("[dineleak] recurring monitor unauthorized", {
+      hasCronSecret: Boolean(process.env.CRON_SECRET?.trim()),
+      deploymentEnv: process.env.VERCEL_ENV ?? "unknown",
+    });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const dueSubscriptions = await listDueRecurringSubscriptions(20);
-  const results = [];
-
-  for (const subscription of dueSubscriptions) {
-    // Keep scans sequential to avoid rate spikes and preserve per-restaurant logs.
-    const result = await processRecurringSubscription(subscription.subscriptionId);
-    results.push({
-      subscriptionId: subscription.subscriptionId,
-      ...result,
+  try {
+    const dueSubscriptions = await listDueRecurringSubscriptions(20);
+    console.info("[dineleak] recurring monitor run", {
+      dueSubscriptions: dueSubscriptions.length,
+      deploymentEnv: process.env.VERCEL_ENV ?? "unknown",
     });
-  }
+    const results = [];
 
-  return NextResponse.json({
-    ok: true,
-    processed: results.filter((item) => item.processed).length,
-    skipped: results.length - results.filter((item) => item.processed).length,
-    results,
-  });
+    for (const subscription of dueSubscriptions) {
+      // Keep scans sequential to avoid rate spikes and preserve per-restaurant logs.
+      const result = await processRecurringSubscription(subscription.subscriptionId);
+      results.push({
+        subscriptionId: subscription.subscriptionId,
+        ...result,
+      });
+    }
+
+    const processed = results.filter((item) => item.processed).length;
+    const skipped = results.length - processed;
+    console.info("[dineleak] recurring monitor finished", {
+      dueSubscriptions: dueSubscriptions.length,
+      processed,
+      skipped,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      processed,
+      skipped,
+      results,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Recurring monitor failed.";
+    console.error("[dineleak] recurring monitor crashed", {
+      error: message,
+    });
+    return NextResponse.json({ error: "Recurring monitor failed." }, { status: 500 });
+  }
 }
 
 export async function GET(request: Request) {

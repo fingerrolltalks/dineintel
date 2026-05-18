@@ -91,7 +91,7 @@ async function appendAuditRecord(payload: {
   snapshot: WebsiteAuditSnapshot;
   result: AuditResult;
 }) {
-  const logPath = join("/tmp", "dineintel", "audit-results.jsonl");
+  const logPath = join("/tmp", "dineleak", "audit-results.jsonl");
   await mkdir(dirname(logPath), { recursive: true });
   await appendFile(
     logPath,

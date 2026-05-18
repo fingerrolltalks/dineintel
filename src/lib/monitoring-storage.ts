@@ -18,10 +18,12 @@ export type RecurringMonitoringSubscription = {
   intervalDays: number;
   nextScanAt: string;
   lastScanAt: string | null;
+  lastAttemptAt: string | null;
   lastAuditId: string | null;
   stripeStatus: string | null;
   active: boolean;
   scanCount: number;
+  retryCount: number;
   lastError: string | null;
   createdAt: string;
   updatedAt: string;
@@ -57,10 +59,12 @@ function toMonitoringSubscription(row: Record<string, unknown>): RecurringMonito
     intervalDays: Number(row.interval_days ?? 30),
     nextScanAt: String(row.next_scan_at ?? new Date().toISOString()),
     lastScanAt: (row.last_scan_at as string | null) ?? null,
+    lastAttemptAt: (row.last_attempt_at as string | null) ?? null,
     lastAuditId: (row.last_audit_id as string | null) ?? null,
     stripeStatus: (row.stripe_status as string | null) ?? null,
     active: Boolean(row.active),
     scanCount: Number(row.scan_count ?? 0),
+    retryCount: Number(row.retry_count ?? 0),
     lastError: (row.last_error as string | null) ?? null,
     createdAt: String(row.created_at ?? new Date().toISOString()),
     updatedAt: String(row.updated_at ?? new Date().toISOString()),
@@ -91,15 +95,19 @@ async function ensureSchema() {
         interval_days integer NOT NULL,
         next_scan_at timestamptz NOT NULL,
         last_scan_at timestamptz,
+        last_attempt_at timestamptz,
         last_audit_id text,
         stripe_status text,
         active boolean NOT NULL DEFAULT true,
         scan_count integer NOT NULL DEFAULT 0,
+        retry_count integer NOT NULL DEFAULT 0,
         last_error text,
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )
     `;
+    await sql`ALTER TABLE dineintel_monitoring_subscriptions ADD COLUMN IF NOT EXISTS last_attempt_at timestamptz`;
+    await sql`ALTER TABLE dineintel_monitoring_subscriptions ADD COLUMN IF NOT EXISTS retry_count integer NOT NULL DEFAULT 0`;
     await sql`CREATE INDEX IF NOT EXISTS dineintel_monitoring_due_idx ON dineintel_monitoring_subscriptions (active, next_scan_at)`;
     await sql`CREATE INDEX IF NOT EXISTS dineintel_monitoring_restaurant_idx ON dineintel_monitoring_subscriptions (restaurant_name_norm, restaurant_website_norm)`;
   })();
@@ -138,10 +146,12 @@ export async function upsertMonitoringSubscriptionFromPurchase(record: StripePur
       interval_days,
       next_scan_at,
       last_scan_at,
+      last_attempt_at,
       last_audit_id,
       stripe_status,
       active,
       scan_count,
+      retry_count,
       last_error,
       created_at,
       updated_at
@@ -165,8 +175,10 @@ export async function upsertMonitoringSubscriptionFromPurchase(record: StripePur
       ${nextScanAt},
       NULL,
       NULL,
+      NULL,
       ${record.paymentStatus ?? "active"},
       true,
+      0,
       0,
       NULL,
       NOW(),
@@ -194,6 +206,7 @@ export async function upsertMonitoringSubscriptionFromPurchase(record: StripePur
       END,
       active = true,
       stripe_status = EXCLUDED.stripe_status,
+      retry_count = 0,
       updated_at = NOW()
     RETURNING *
   `;
@@ -249,10 +262,12 @@ export async function markRecurringScanComplete(payload: {
     SET
       last_audit_id = ${payload.auditId},
       last_scan_at = ${payload.lastScanAt},
+      last_attempt_at = ${payload.lastScanAt},
       next_scan_at = ${payload.nextScanAt},
       stripe_status = ${payload.stripeStatus},
       active = true,
       scan_count = scan_count + 1,
+      retry_count = 0,
       last_error = NULL,
       updated_at = NOW()
     WHERE subscription_id = ${payload.subscriptionId}
@@ -272,6 +287,13 @@ export async function markRecurringScanFailed(payload: {
     UPDATE dineintel_monitoring_subscriptions
     SET
       last_error = ${payload.error},
+      last_attempt_at = NOW(),
+      retry_count = COALESCE(retry_count, 0) + 1,
+      next_scan_at = NOW() + CASE
+        WHEN COALESCE(retry_count, 0) = 0 THEN INTERVAL '6 hours'
+        WHEN COALESCE(retry_count, 0) = 1 THEN INTERVAL '12 hours'
+        ELSE INTERVAL '24 hours'
+      END,
       stripe_status = COALESCE(${payload.stripeStatus ?? null}, stripe_status),
       updated_at = NOW()
     WHERE subscription_id = ${payload.subscriptionId}

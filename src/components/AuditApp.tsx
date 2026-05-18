@@ -23,7 +23,10 @@ import {
 import type { FormEvent, HTMLAttributes, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { generateAudit, type AuditInput, type AuditResult } from "@/lib/audit";
+import { trackGaEvent } from "@/lib/analytics";
 import { isReportUnlocked, loadReportResult, saveReportResult, setReportUnlocked } from "@/lib/report-session";
+import type { GoogleAuditSignals } from "@/lib/google-signals";
+import type { WebsiteAuditSnapshot } from "@/lib/website-snapshot";
 
 const scanSteps = [
   {
@@ -184,42 +187,49 @@ type PricingPlan = {
   featured?: boolean;
 };
 
+type AuditResponse = AuditResult & {
+  auditId?: string;
+  websiteSnapshot?: WebsiteAuditSnapshot & { googleSignals?: GoogleAuditSignals | null };
+  aiReady?: boolean;
+  generatedBy?: "openai" | "template";
+  googleSignals?: GoogleAuditSignals | null;
+};
+
 const pricingPlans: PricingPlan[] = [
   {
     id: "report",
-    name: "Detailed AI Growth Report",
+    name: "DineLeak AI Growth Report",
     price: "$99",
     billing: "One-time",
     cta: "Unlock Full Report",
-    description: "A deeper AI-powered restaurant report with exact fixes, conversion leaks, menu/website recommendations, and priority action steps. Instant access after checkout.",
-    highlights: ["Full report breakdown", "Competitor-style insights", "Instant access after checkout"],
+    description: "Concise one-time restaurant growth audit with clear fixes, conversion leaks, and priority actions.",
+    highlights: ["Full report breakdown", "Priority action steps", "Instant access"],
     featured: true,
   },
   {
     id: "starter",
-    name: "Growth Monitor Starter",
+    name: "DineLeak Growth Monitor Starter",
     price: "$49",
     billing: "Monthly",
     cta: "Start Monitoring",
-    description: "Weekly AI monitoring for your restaurant’s website, visibility, reviews, and social presence.",
-    highlights: ["Weekly scan checks", "Review signals", "Mobile conversion alerts"],
+    description: "Weekly AI-powered monitoring for website scans, Google visibility, review sentiment, and mobile conversion.",
+    highlights: ["Website scans", "Visibility tracking", "Review alerts"],
   },
   {
     id: "pro",
-    name: "Growth Monitor Pro",
+    name: "DineLeak Growth Monitor Pro",
     price: "$99",
     billing: "Monthly",
     cta: "Go Pro",
-    description:
-      "Advanced AI monitoring with competitor checks, review intelligence, social content ideas, and priority growth recommendations.",
-    highlights: ["Competitor tracking", "Priority alerts", "Advanced recommendations"],
+    description: "Premium weekly monitoring with competitor checks, priority alerts, and deeper growth recommendations.",
+    highlights: ["Competitor tracking", "Priority alerts", "Premium recommendations"],
   },
 ];
 
 export default function AuditApp() {
   const [phase, setPhase] = useState<"form" | "scan" | "results">("form");
   const [step, setStep] = useState(0);
-  const [result, setResult] = useState<AuditResult | null>(null);
+  const [result, setResult] = useState<AuditResponse | null>(null);
   const [pricingOpen, setPricingOpen] = useState(false);
   const [reportUnlocked, setReportUnlockedState] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<PricingPlan["id"] | null>(null);
@@ -232,9 +242,10 @@ export default function AuditApp() {
     cuisine: "",
     city: "",
   });
-  const auditRequestRef = useRef<Promise<AuditResult> | null>(null);
+  const auditRequestRef = useRef<Promise<AuditResponse> | null>(null);
   const auditAbortRef = useRef<AbortController | null>(null);
   const auditTimeoutRef = useRef<number | null>(null);
+  const hasTrackedResultsViewRef = useRef(false);
 
   useEffect(() => {
     const storedResult = loadReportResult();
@@ -244,7 +255,7 @@ export default function AuditApp() {
     const storedUnlocked = isReportUnlocked();
 
     if (storedResult) {
-      setResult(storedResult);
+      setResult(storedResult as AuditResponse);
       setPhase("results");
     }
 
@@ -374,8 +385,24 @@ export default function AuditApp() {
     if (reportUnlocked) setPricingOpen(false);
   }, [reportUnlocked]);
 
+  useEffect(() => {
+    if (phase !== "results" || !result || hasTrackedResultsViewRef.current) return;
+    hasTrackedResultsViewRef.current = true;
+    trackGaEvent("results_viewed", {
+      restaurant_name: form.restaurant || undefined,
+      cuisine: form.cuisine || undefined,
+      city: form.city || undefined,
+    });
+  }, [form.city, form.cuisine, form.restaurant, phase, result]);
+
   function submitAudit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    hasTrackedResultsViewRef.current = false;
+    trackGaEvent("scan_started", {
+      restaurant_name: form.restaurant || undefined,
+      cuisine: form.cuisine || undefined,
+      city: form.city || undefined,
+    });
     setStep(0);
     auditAbortRef.current?.abort();
     const auditInput = {
@@ -399,7 +426,7 @@ export default function AuditApp() {
         if (!response.ok) {
           throw new Error("Failed to generate audit.");
         }
-        return (await response.json()) as AuditResult;
+        return (await response.json()) as AuditResponse;
       })
       .catch(() => generateAudit(auditInput));
     setPhase("scan");
@@ -407,6 +434,15 @@ export default function AuditApp() {
 
   async function startCheckout(planId: PricingPlan["id"], auditData = form) {
     try {
+      trackGaEvent("subscription_selected", {
+        plan_id: planId,
+      });
+      trackGaEvent("checkout_started", {
+        plan_id: planId,
+        restaurant_name: auditData.restaurant || undefined,
+        cuisine: auditData.cuisine || undefined,
+        city: auditData.city || undefined,
+      });
       setCheckoutPlan(planId);
       setCheckoutError("");
 
@@ -587,7 +623,10 @@ export default function AuditApp() {
         {phase === "results" && result && (
           <Results
             result={result}
-            restart={() => setPhase("form")}
+            restart={() => {
+              hasTrackedResultsViewRef.current = false;
+              setPhase("form");
+            }}
             pricingOpen={pricingOpen}
             closePricing={() => setPricingOpen(false)}
             startCheckout={startCheckout}
@@ -723,7 +762,7 @@ function Results({
   openPricing,
   reportUnlocked,
 }: {
-  result: AuditResult;
+  result: AuditResponse;
   restart: () => void;
   pricingOpen: boolean;
   closePricing: () => void;
@@ -790,6 +829,8 @@ function Results({
             </ReportCard>
           </div>
         </div>
+
+        <GoogleBackedMetrics googleSignals={result.websiteSnapshot?.googleSignals ?? result.googleSignals ?? null} />
 
         <ReportCard className="mt-6 border-gold/25 bg-[linear-gradient(145deg,rgba(255,191,49,.1),rgba(0,0,0,.22))] shadow-gold lg:mt-8">
           <div className="mb-5 flex min-w-0 items-start gap-3 text-gold">
@@ -1006,6 +1047,154 @@ function MiniSignal({ title, body }: { title: string; body: string }) {
       <p className="mt-1 text-sm leading-6 text-white/74">{body}</p>
     </div>
   );
+}
+
+function GoogleBackedMetrics({ googleSignals }: { googleSignals: GoogleAuditSignals | null }) {
+  const pageSpeed = googleSignals?.pageSpeed;
+  const places = googleSignals?.places;
+
+  if (!pageSpeed && !places) return null;
+
+  const coreWebVitals = pageSpeed?.coreWebVitals;
+
+  return (
+    <ReportCard className="mt-6 border-cyan-400/20 bg-[linear-gradient(145deg,rgba(17,185,255,.08),rgba(0,0,0,.24))] shadow-[0_0_34px_rgba(17,185,255,.08)] lg:mt-8">
+      <div className="mb-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">Google-backed data</p>
+          <h3 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
+            Real metrics from Google PageSpeed and Places
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {pageSpeed ? (
+            <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">
+              Google PageSpeed
+            </span>
+          ) : null}
+          {places ? (
+            <span className="rounded-full border border-lime/20 bg-lime/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-lime">
+              Google Places
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        {pageSpeed ? (
+          <div className="rounded-[1.4rem] border border-white/10 bg-black/24 p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-300">From Google PageSpeed</p>
+                <h4 className="mt-2 text-lg font-black text-white">Mobile performance snapshot</h4>
+              </div>
+              <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-200">
+                {pageSpeed.mobileUrlTested}
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <MetricTile label="Performance score" value={pageSpeed.performanceScore} source="Google PageSpeed" />
+              <MetricTile label="Accessibility score" value={pageSpeed.accessibilityScore} source="Google PageSpeed" />
+              <MetricTile label="SEO score" value={pageSpeed.seoScore} source="Google PageSpeed" />
+              <MetricTile label="Best practices score" value={pageSpeed.bestPracticesScore} source="Google PageSpeed" />
+            </div>
+
+            {coreWebVitals ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-300">Core Web Vitals</p>
+                  <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">
+                    Google PageSpeed
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  <MetricTile
+                    label="Largest Contentful Paint"
+                    value={formatMs(coreWebVitals.largestContentfulPaintMs)}
+                    source="Google PageSpeed"
+                  />
+                  <MetricTile
+                    label="Cumulative Layout Shift"
+                    value={formatDecimal(coreWebVitals.cumulativeLayoutShift)}
+                    source="Google PageSpeed"
+                  />
+                  <MetricTile
+                    label="Interaction to Next Paint"
+                    value={formatMs(coreWebVitals.interactionToNextPaintMs)}
+                    source="Google PageSpeed"
+                  />
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <MetricTile
+                    label="First Contentful Paint"
+                    value={formatMs(coreWebVitals.firstContentfulPaintMs)}
+                    source="Google PageSpeed"
+                  />
+                  <MetricTile
+                    label="Speed Index"
+                    value={formatMs(coreWebVitals.speedIndexMs)}
+                    source="Google PageSpeed"
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {places ? (
+          <div className="rounded-[1.4rem] border border-white/10 bg-black/24 p-4 sm:p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-lime">From Google Places</p>
+            <h4 className="mt-2 text-lg font-black text-white">Local business data</h4>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <MetricTile label="Rating" value={places.rating ?? "Unavailable"} source="Google Places" />
+              <MetricTile label="Review count" value={places.reviewCount ?? "Unavailable"} source="Google Places" />
+              <MetricTile label="Address" value={places.address ?? "Unavailable"} source="Google Places" />
+              <MetricTile label="Maps URL" value={places.googleMapsUrl ?? "Unavailable"} source="Google Places" />
+            </div>
+            {places.businessHours.length ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-lime">Business hours</p>
+                <ul className="mt-2 space-y-1 text-sm leading-6 text-white/76">
+                  {places.businessHours.slice(0, 7).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </ReportCard>
+  );
+}
+
+function MetricTile({
+  label,
+  value,
+  source,
+}: {
+  label: string;
+  value: string | number;
+  source: "Google PageSpeed" | "Google Places";
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/46">{label}</p>
+      <p className="mt-1 text-base font-black text-white [overflow-wrap:anywhere]">{typeof value === "number" ? value : value}</p>
+      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-300">{source}</p>
+    </div>
+  );
+}
+
+function formatMs(value: number | null) {
+  if (value === null) return "Unavailable";
+  return `${Math.round(value)} ms`;
+}
+
+function formatDecimal(value: number | null) {
+  if (value === null) return "Unavailable";
+  return value.toFixed(2);
 }
 
 function InsightLine({

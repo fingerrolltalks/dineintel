@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { AuditInput, AuditResult } from "@/lib/audit";
+import type { GoogleAuditSignals } from "@/lib/google-signals";
 import type { WebsiteAuditSnapshot } from "@/lib/website-snapshot";
 
 const auditResponseSchema = {
@@ -69,6 +70,7 @@ type GenerateOpenAIAuditOptions = {
   previousAudit?: AuditResult | null;
   monitoringPlan?: "starter" | "pro" | null;
   retries?: number;
+  googleSignals?: GoogleAuditSignals | null;
 };
 
 function clampScore(value: number) {
@@ -145,6 +147,12 @@ Use the previous audit to vary recommendations and focus on changes since the la
     ? `Monitoring plan: ${options.monitoringPlan}
 This is a recurring scan. Emphasize what changed since the last run.`
     : "";
+  const googleSignalsBlock = options.googleSignals
+    ? `Google enrichment signals:
+${JSON.stringify(options.googleSignals, null, 2)}
+
+Use PageSpeed and Places only when present. Do not invent missing Google data.`
+    : "Google enrichment signals: unavailable. Use website snapshot and restaurant input only.";
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
@@ -155,7 +163,7 @@ This is a recurring scan. Emphasize what changed since the last run.`
         {
           model,
           instructions:
-            "You are DineLeak, a premium restaurant growth analyst. Use the provided website snapshot as the primary evidence. Produce concise, sharp, investor-ready restaurant findings. Focus on revenue leaks, conversion, reviews, local visibility, social content, and retention. Keep the tone premium, specific, and actionable. Avoid repetitive generic advice and vary wording across restaurants. Output only valid JSON that matches the schema.",
+            "You are DineLeak, a premium restaurant growth analyst. Use the provided website snapshot as the primary evidence. If Google enrichment signals are available, use them to sharpen performance, accessibility, SEO, Maps, review, and trust recommendations. Produce concise, sharp, investor-ready restaurant findings. Focus on revenue leaks, conversion, reviews, local visibility, social content, and retention. Keep the tone premium, specific, and actionable. Avoid repetitive generic advice and vary wording across restaurants. Output only valid JSON that matches the schema.",
           input: `Restaurant audit input:
 ${JSON.stringify(
   {
@@ -173,6 +181,8 @@ ${JSON.stringify(
 Website snapshot:
 ${JSON.stringify(snapshot, null, 2)}
 
+${googleSignalsBlock}
+
 ${previousAuditBlock}
 ${monitoringBlock}
 
@@ -185,6 +195,7 @@ Generate a premium restaurant growth audit with:
 
 Rules:
 - Use restaurant name, cuisine, city, website title, meta description, headings, CTA text, menu/order/reservation links, social links, contact info, and review signals.
+- Use PageSpeed and Places signals when present to inform performance, accessibility, SEO, and map presence recommendations.
 - Make each recommendation specific to the restaurant and site evidence.
 - Each opportunity must include evidenceFound, whyItMatters, and quickFix.
 - Avoid repeating the same generic phrases across audits.
@@ -195,7 +206,7 @@ Rules:
           text: {
             format: {
               type: "json_schema",
-              name: "dineintel_audit",
+              name: "dineleak_audit",
               strict: true,
               schema: auditResponseSchema,
             },

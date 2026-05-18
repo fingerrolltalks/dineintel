@@ -1,3 +1,5 @@
+import type { GoogleAuditSignals } from "@/lib/google-signals";
+
 export type WebsiteAuditSnapshot = {
   requestedUrl: string;
   finalUrl: string | null;
@@ -21,6 +23,7 @@ export type WebsiteAuditSnapshot = {
   pageTextPreview: string;
   htmlLength: number;
   fetchError: string | null;
+  googleSignals?: GoogleAuditSignals | null;
 };
 
 const publicHostPatterns = [

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { checkDatabaseConnection } from "@/lib/database";
-import { ensureDineIntelDatabaseSchema } from "@/lib/database-schema";
+import { checkDatabaseConnection, isDatabaseConfigured } from "@/lib/database";
+import { ensureDineLeakDatabaseSchema } from "@/lib/database-schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,16 +25,16 @@ export async function GET(request: Request) {
       return NextResponse.json(connection, { status: 503 });
     }
 
-    await ensureDineIntelDatabaseSchema();
+    await ensureDineLeakDatabaseSchema();
 
     return NextResponse.json({ status: "ok", db: "connected" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Database health check failed.";
-    console.error("[dineintel] database health check failed", message);
+    console.error("[dineleak] database health check failed", message);
     return NextResponse.json(
       {
         ok: false,
-        configured: Boolean(process.env.DATABASE_URL?.trim()),
+        configured: isDatabaseConfigured(),
         schemaReady: false,
         message,
       },

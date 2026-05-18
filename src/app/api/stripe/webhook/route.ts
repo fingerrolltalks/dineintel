@@ -10,6 +10,7 @@ export async function POST(request: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
+    console.error("[dineleak] stripe webhook missing STRIPE_WEBHOOK_SECRET");
     return NextResponse.json({ error: "STRIPE_WEBHOOK_SECRET is not set." }, { status: 500 });
   }
 
@@ -27,18 +28,18 @@ export async function POST(request: Request) {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid Stripe webhook signature.";
-    console.error("[dineintel] stripe webhook signature error", message);
+    console.error("[dineleak] stripe webhook signature error", message);
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  console.info("[dineintel] stripe webhook received", {
+  console.info("[dineleak] stripe webhook received", {
     type: event.type,
     id: event.id,
   });
 
   const claimed = await claimStripeEvent(event.id, event.type);
   if (!claimed) {
-    console.info("[dineintel] stripe webhook duplicate ignored", {
+    console.info("[dineleak] stripe webhook duplicate ignored", {
       type: event.type,
       id: event.id,
     });
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
       const record = buildPurchaseRecord(fullSession, priceId);
       await recordStripePurchase(record);
     } catch (error) {
-      console.error("[dineintel] stripe webhook record error", error);
+      console.error("[dineleak] stripe webhook record error", error);
       return NextResponse.json({ error: "Failed to record purchase." }, { status: 500 });
     }
   } else if (event.type === "invoice.paid") {
@@ -76,11 +77,11 @@ export async function POST(request: Request) {
       const record = buildInvoicePurchaseRecord(fullInvoice, priceId);
       await recordStripePurchase(record);
     } catch (error) {
-      console.error("[dineintel] stripe invoice webhook record error", error);
+      console.error("[dineleak] stripe invoice webhook record error", error);
       return NextResponse.json({ error: "Failed to record subscription payment." }, { status: 500 });
     }
   } else {
-    console.info("[dineintel] stripe webhook ignored", {
+    console.info("[dineleak] stripe webhook ignored", {
       type: event.type,
       id: event.id,
     });

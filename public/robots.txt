@@ -1,0 +1,8 @@
+User-Agent: Googlebot
+Allow: /
+
+User-Agent: *
+Allow: /
+
+Host: https://dineleak.app
+Sitemap: https://dineleak.app/sitemap.xml

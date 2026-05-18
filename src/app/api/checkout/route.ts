@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAppUrl, getPlanPriceId, getStripe, planConfig, type CheckoutPlanId } from "@/lib/stripe";
+import { buildCheckoutPriceData, getAppUrl, getPlanPriceId, getStripe, planConfig, type CheckoutPlanId } from "@/lib/stripe";
 
 type CheckoutBody = {
   planId?: CheckoutPlanId;
@@ -15,13 +15,12 @@ type CheckoutBody = {
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  try {
-    if (!process.env.STRIPE_SECRET_KEY?.trim()) {
-      return NextResponse.json({ error: "Missing STRIPE_SECRET_KEY" }, { status: 500 });
-    }
+  let requestPlanId: CheckoutPlanId | undefined;
 
+  try {
     const body = (await request.json()) as CheckoutBody;
     const planId = body.planId;
+    requestPlanId = planId;
 
     if (!planId || !(planId in planConfig)) {
       return NextResponse.json({ error: "Invalid checkout plan." }, { status: 400 });
@@ -29,13 +28,17 @@ export async function POST(request: Request) {
 
     const config = planConfig[planId];
     const { priceId, priceEnvKey } = getPlanPriceId(planId);
+    const stripeSecretPresent = Boolean(process.env.STRIPE_SECRET_KEY?.trim());
+    const deploymentEnv = process.env.VERCEL_ENV ?? "unknown";
 
+    const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") || "";
     const baseUrl = getAppUrl(request);
     const stripe = getStripe();
+    const priceData = await buildCheckoutPriceData(planId);
     const metadata = {
       selected_product_type: planId,
-      selected_product: config.successLabel,
-      product_name: config.successLabel,
+      selected_product: config.checkoutName,
+      product_name: config.checkoutName,
       customer_email: body.customerEmail?.trim() || "",
       restaurant_name: body.restaurantName?.trim() || "",
       restaurant_website: body.restaurantWebsite?.trim() || "",
@@ -47,17 +50,22 @@ export async function POST(request: Request) {
       source: "DineLeak",
     };
 
-    console.info("[dineintel] stripe checkout started", {
+    console.info("[dineleak] stripe checkout started", {
       planId,
+      deploymentEnv,
+      stripeSecretPresent,
+      priceEnvKey,
+      priceIdStartsWithPrice: priceId.startsWith("price_"),
+      appUrlSource: configuredAppUrl ? "NEXT_PUBLIC_APP_URL" : "request-origin",
+      appUrl: baseUrl,
       restaurantName: body.restaurantName || null,
       restaurantWebsite: body.restaurantWebsite || null,
       restaurantInstagram: body.restaurantInstagram || null,
       restaurantTikTok: body.restaurantTikTok || null,
-      priceEnvKey,
     });
     const session = await stripe.checkout.sessions.create({
       mode: config.mode,
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ price_data: priceData, quantity: 1 }],
       customer_email: body.customerEmail?.trim() || undefined,
       success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}&plan=${planId}`,
       cancel_url: `${baseUrl}/cancel?plan=${planId}`,
@@ -70,6 +78,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: session.url });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to create checkout session.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const stripeError = error as { type?: string; code?: string; statusCode?: number };
+    console.error("[dineleak] checkout failed", {
+      message,
+      planId: requestPlanId ?? null,
+      selectedEnvKey: requestPlanId ? planConfig[requestPlanId].priceEnvKey : null,
+      errorType: stripeError?.type ?? null,
+      errorCode: stripeError?.code ?? null,
+      statusCode: stripeError?.statusCode ?? null,
+    });
+    return NextResponse.json(
+      { error: "Checkout is temporarily unavailable. Please try again or contact support." },
+      { status: 500 },
+    );
   }
 }

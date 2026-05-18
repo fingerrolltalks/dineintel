@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { ArrowRight } from "lucide-react";
+import { trackGaEvent } from "@/lib/analytics";
 import { setReportUnlocked } from "@/lib/report-session";
 
 export default function SuccessActions({
@@ -11,8 +13,18 @@ export default function SuccessActions({
 }: {
   isReportPurchase: boolean;
   sessionId: string | null;
-}) {
+  }) {
   const router = useRouter();
+  const hasTrackedPurchase = useRef(false);
+
+  useEffect(() => {
+    if (hasTrackedPurchase.current || !sessionId) return;
+    hasTrackedPurchase.current = true;
+    trackGaEvent("purchase_completed", {
+      plan: isReportPurchase ? "report" : "subscription",
+      session_id: sessionId,
+    });
+  }, [isReportPurchase, sessionId]);
 
   function viewReport() {
     setReportUnlocked(isReportPurchase);

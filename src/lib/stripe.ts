@@ -2,37 +2,75 @@ import Stripe from "stripe";
 
 export type CheckoutPlanId = "report" | "starter" | "pro";
 
+const STRIPE_PRICE_ENV_KEYS = {
+  report: "STRIPE_PRICE_REPORT",
+  starter: "STRIPE_PRICE_STARTER",
+  pro: "STRIPE_PRICE_PRO",
+} as const;
+
 export const planConfig: Record<
   CheckoutPlanId,
   {
-    priceEnvKeys: Array<
-      | "STRIPE_PRICE_REPORT"
-      | "STRIPE_PRICE_DETAILED_REPORT"
-      | "STRIPE_PRICE_STARTER"
-      | "STRIPE_PRICE_STARTER_MONITOR"
-      | "STRIPE_PRICE_PRO"
-      | "STRIPE_PRICE_PRO_MONITOR"
-    >;
+    priceEnvKey: (typeof STRIPE_PRICE_ENV_KEYS)[CheckoutPlanId];
     mode: "payment" | "subscription";
-    successLabel: string;
+    checkoutName: string;
+    checkoutDescription: string;
   }
 > = {
   report: {
-    priceEnvKeys: ["STRIPE_PRICE_REPORT", "STRIPE_PRICE_DETAILED_REPORT"],
+    priceEnvKey: STRIPE_PRICE_ENV_KEYS.report,
     mode: "payment",
-    successLabel: "Detailed AI Growth Report",
+    checkoutName: "DineLeak AI Growth Report",
+    checkoutDescription: "One-time restaurant growth audit with clear fixes, conversion leaks, and priority actions. Instant access after checkout.",
   },
   starter: {
-    priceEnvKeys: ["STRIPE_PRICE_STARTER", "STRIPE_PRICE_STARTER_MONITOR"],
+    priceEnvKey: STRIPE_PRICE_ENV_KEYS.starter,
     mode: "subscription",
-    successLabel: "Growth Monitor Starter",
+    checkoutName: "DineLeak Growth Monitor Starter",
+    checkoutDescription: "Weekly AI-powered monitoring for website scans, Google visibility, review sentiment, and mobile conversion.",
   },
   pro: {
-    priceEnvKeys: ["STRIPE_PRICE_PRO", "STRIPE_PRICE_PRO_MONITOR"],
+    priceEnvKey: STRIPE_PRICE_ENV_KEYS.pro,
     mode: "subscription",
-    successLabel: "Growth Monitor Pro",
+    checkoutName: "DineLeak Growth Monitor Pro",
+    checkoutDescription: "Premium weekly monitoring with competitor checks, priority alerts, and deeper growth recommendations.",
   },
 };
+
+export async function buildCheckoutPriceData(planId: CheckoutPlanId) {
+  const stripe = getStripe();
+  const { priceId } = getPlanPriceId(planId);
+  const config = planConfig[planId];
+  const price = await stripe.prices.retrieve(priceId);
+
+  if (!price.unit_amount) {
+    throw new Error(`Missing unit_amount for ${priceId}.`);
+  }
+
+  const productData = {
+    name: config.checkoutName,
+    description: config.checkoutDescription,
+    metadata: {
+      brand: "DineLeak",
+      plan_id: planId,
+      source_price_id: priceId,
+    },
+  };
+
+  return {
+    currency: price.currency,
+    unit_amount: price.unit_amount,
+    product_data: productData,
+    ...(price.recurring
+      ? {
+          recurring: {
+            interval: price.recurring.interval,
+            interval_count: price.recurring.interval_count ?? 1,
+          },
+        }
+      : {}),
+  };
+}
 
 let stripeInstance: Stripe | null = null;
 
@@ -41,6 +79,10 @@ export function getStripe() {
 
   if (!key) {
     throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+
+  if (!key.startsWith("sk_") || key.includes("*")) {
+    throw new Error("Invalid STRIPE_SECRET_KEY configuration");
   }
 
   if (!stripeInstance) {
@@ -66,6 +108,10 @@ export function getAppUrl(request: Request) {
     if (configuredIsLocal && requestIsLocal && parsedConfiguredUrl.origin !== requestUrl.origin) {
       return requestUrl.origin;
     }
+
+    if (!configuredIsLocal && parsedConfiguredUrl.hostname !== requestUrl.hostname) {
+      return requestUrl.origin;
+    }
   } catch {
     return requestUrl.origin;
   }
@@ -75,13 +121,15 @@ export function getAppUrl(request: Request) {
 
 export function getPlanPriceId(planId: CheckoutPlanId) {
   const config = planConfig[planId];
+  const priceId = process.env[config.priceEnvKey]?.trim();
 
-  for (const key of config.priceEnvKeys) {
-    const priceId = process.env[key];
-    if (priceId) {
-      return { priceId, priceEnvKey: key };
-    }
+  if (!priceId) {
+    throw new Error(`Missing ${config.priceEnvKey} for ${planId} checkout.`);
   }
 
-  throw new Error(`Missing Stripe price env for ${planId}.`);
+  if (!priceId.startsWith("price_")) {
+    throw new Error(`Invalid ${config.priceEnvKey} for ${planId} checkout.`);
+  }
+
+  return { priceId, priceEnvKey: config.priceEnvKey };
 }
