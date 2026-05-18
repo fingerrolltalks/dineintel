@@ -19,7 +19,7 @@ export function SiteFooter() {
             </Link>
           ))}
           <a
-            href="https://instagram.com/DynLeak"
+            href="https://www.instagram.com/dineleak/"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 font-medium transition hover:text-white"

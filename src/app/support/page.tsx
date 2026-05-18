@@ -26,11 +26,11 @@ export default function SupportPage() {
       </p>
       <p>
         Follow updates on{" "}
-        <a href="https://instagram.com/DynLeak" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-lime transition hover:text-white">
+        <a href="https://www.instagram.com/dineleak/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-lime transition hover:text-white">
           Instagram
           <ExternalLink size={14} />
         </a>{" "}
-        or @DynLeak.
+        or @dineleak.
       </p>
     </LegalPageShell>
   );
