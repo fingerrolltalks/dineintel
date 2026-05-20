@@ -719,7 +719,7 @@ function RevenueLeakCard() {
             />
           </svg>
           <div className="text-center">
-            <div className="text-6xl font-extrabold tracking-[-0.07em] text-white">Illustrative</div>
+            <div className="text-5xl font-extrabold tracking-[-0.07em] text-white sm:text-6xl">Preview</div>
             <div className="mt-1 text-sm font-black uppercase tracking-[0.075em] text-lime">Preview only</div>
             <div className="mx-auto mt-3 w-fit rounded-full border border-red-400/25 bg-red-500/14 px-3 py-1 text-xs font-black text-red-300">Example result</div>
           </div>
