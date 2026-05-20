@@ -83,7 +83,7 @@ const premiumSections: PremiumSection[] = [
       "Visitors likely understand the brand, but the next action is still a little buried on mobile. That creates extra hesitation at the exact moment they should convert.",
     why:
       "When guests pause to search for Menu, Order, or Reserve, some of them leave before they ever tap.",
-    revenueImpact: "Estimated recovery: $700-$1,100/mo",
+    revenueImpact: "Example recovery range: $700-$1,100/mo",
     action: "Move the primary CTA higher, repeat it after the trust proof, and make the mobile action row impossible to miss.",
     priority: "High",
     difficulty: "Easy",
@@ -97,7 +97,7 @@ const premiumSections: PremiumSection[] = [
       "The paid report would likely surface repeated phrases around wait time, service speed, or order clarity. Those patterns usually influence whether a guest trusts the restaurant enough to commit.",
     why:
       "Fresh responses and visible follow-through help local ranking signals and reduce the risk of losing high-intent diners.",
-    revenueImpact: "Estimated recovery: $500-$900/mo",
+    revenueImpact: "Example recovery range: $500-$900/mo",
     action: "Reply to the newest negative reviews, acknowledge the issue directly, and show one visible fix in public responses.",
     priority: "High",
     difficulty: "Easy",
@@ -111,7 +111,7 @@ const premiumSections: PremiumSection[] = [
       "The report would likely show profile gaps around hours, categories, photo freshness, and intent keywords that help Google decide whether to surface the restaurant.",
     why:
       "Small local SEO misses can quietly reduce calls, directions taps, and website visits without any obvious warning.",
-    revenueImpact: "Estimated recovery: $600-$1,200/mo",
+    revenueImpact: "Example recovery range: $600-$1,200/mo",
     action: "Tighten business hours, sharpen category and keyword coverage, and keep photos updated around current menu highlights.",
     priority: "High",
     difficulty: "Medium",
@@ -125,7 +125,7 @@ const premiumSections: PremiumSection[] = [
       "Short-form clips, signature dishes, and clearer visit prompts often outperform generic brand posts. If those are missing, guests have less reason to remember or share the restaurant.",
     why:
       "Restaurants win attention when the food is instantly understandable and easy to desire in under a few seconds.",
-    revenueImpact: "Estimated recovery: $450-$850/mo",
+    revenueImpact: "Example recovery range: $450-$850/mo",
     action: "Post three short clips per week: one hero dish, one behind-the-scenes moment, and one clear order or visit CTA.",
     priority: "Medium",
     difficulty: "Medium",
@@ -139,7 +139,7 @@ const premiumSections: PremiumSection[] = [
       "If email, SMS, or loyalty prompts are absent near checkout, the restaurant keeps paying to reacquire the same guests again and again.",
     why:
       "Repeat customers are cheaper to convert than first-time guests and are less likely to be lost to delivery apps or competitor ads.",
-    revenueImpact: "Estimated recovery: $650-$1,150/mo",
+    revenueImpact: "Example recovery range: $650-$1,150/mo",
     action: "Add a simple return offer near checkout and capture guests through email or SMS before they leave the site.",
     priority: "Medium",
     difficulty: "Easy",
@@ -153,7 +153,7 @@ const premiumSections: PremiumSection[] = [
       "Competitors are likely showing up stronger in short-form content, clearer order prompts, and more active review replies. That combination helps them get the first click and the first visit.",
     why:
       "Guests compare restaurants fast. The brands that look more active and trustworthy usually win before the customer makes a deeper comparison.",
-    revenueImpact: "Estimated recovery: $900-$1,800/mo",
+    revenueImpact: "Example recovery range: $900-$1,800/mo",
     action: "Match competitor posting cadence, tighten search terms, and answer recent complaints publicly so the brand looks more alive and credible.",
     priority: "High",
     difficulty: "Medium",
@@ -167,7 +167,7 @@ const premiumSections: PremiumSection[] = [
       "Weekly monitoring would show visibility changes, review alerts, social performance shifts, and conversion warnings before they snowball into lost weekends.",
     why:
       "Most revenue leaks are small at first. The value of ongoing tracking is catching the pattern early enough to act before demand slips.",
-    revenueImpact: "Estimated protection: $400-$900/mo",
+    revenueImpact: "Example protection range: $400-$900/mo",
     action: "Set weekly thresholds for local visibility, review sentiment, social traction, and mobile CTA performance.",
     priority: "Medium",
     difficulty: "Easy",
@@ -414,7 +414,7 @@ export default function AuditApp() {
     const controller = new AbortController();
     auditAbortRef.current = controller;
     if (auditTimeoutRef.current) window.clearTimeout(auditTimeoutRef.current);
-    auditTimeoutRef.current = window.setTimeout(() => controller.abort(), 12000);
+    auditTimeoutRef.current = window.setTimeout(() => controller.abort(), 60000);
     auditRequestRef.current = fetch("/api/audit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -535,7 +535,7 @@ export default function AuditApp() {
               ))}
             </div>
             <span className="text-lime">★★★★★</span>
-            <span>2,341 restaurants scanned this week</span>
+            <span>Used by independent restaurants looking for clearer growth signals</span>
           </div>
           <div className="mt-6 max-w-xl rounded-3xl border border-lime/15 bg-lime/[0.035] p-4 text-sm leading-6 text-white/70 shadow-[0_0_28px_rgba(198,255,0,.07)]">
             <span className="font-black text-lime">Example insight:</span> Your menu may be hard to find on mobile, causing guests to leave before ordering.
@@ -684,9 +684,9 @@ function ReportCard({
 
 function RevenueLeakCard() {
   const leaks = [
-    ["Slow mobile experience", "-$1,246/mo"],
-    ["Confusing menu layout", "-$876/mo"],
-    ["Weak trust signals", "-$643/mo"],
+    ["Slow mobile experience", "Example: -$1,246/mo"],
+    ["Confusing menu layout", "Example: -$876/mo"],
+    ["Weak trust signals", "Example: -$643/mo"],
   ];
 
   return (
@@ -699,7 +699,7 @@ function RevenueLeakCard() {
       <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-lime/70 to-transparent" />
       <div className="scan-grid absolute inset-0 opacity-20" />
       <div className="relative">
-        <p className="text-center text-xs font-black uppercase tracking-[0.14em] text-white/86">Revenue Leak Score</p>
+        <p className="text-center text-xs font-black uppercase tracking-[0.14em] text-white/86">Preview Leak Score</p>
         <div className="relative mx-auto mt-6 grid size-52 place-items-center">
           <div className="absolute inset-0 rounded-full bg-lime/10 blur-3xl" />
           <svg className="absolute inset-0 -rotate-[130deg]" viewBox="0 0 220 220" aria-hidden="true">
@@ -719,9 +719,9 @@ function RevenueLeakCard() {
             />
           </svg>
           <div className="text-center">
-            <div className="text-6xl font-extrabold tracking-[-0.07em] text-white">37%</div>
-            <div className="mt-1 text-sm font-black uppercase tracking-[0.075em] text-lime">Leak detected</div>
-            <div className="mx-auto mt-3 w-fit rounded-full border border-red-400/25 bg-red-500/14 px-3 py-1 text-xs font-black text-red-300">High Impact</div>
+            <div className="text-6xl font-extrabold tracking-[-0.07em] text-white">Illustrative</div>
+            <div className="mt-1 text-sm font-black uppercase tracking-[0.075em] text-lime">Preview only</div>
+            <div className="mx-auto mt-3 w-fit rounded-full border border-red-400/25 bg-red-500/14 px-3 py-1 text-xs font-black text-red-300">Example result</div>
           </div>
         </div>
 
@@ -813,7 +813,7 @@ function Results({
               <div className="flex min-w-0 items-start gap-3 text-gold">
                 <AlertTriangle className="mt-1 shrink-0" size={22} />
                 <div className="min-w-0">
-                  <h3 className="text-2xl font-black leading-tight text-white">Revenue leak detected</h3>
+                  <h3 className="text-2xl font-black leading-tight text-white">Example leak pattern detected</h3>
                   <p className="mt-3 text-base leading-7 text-white/64">Your fastest wins are CTA clarity, review trust, and repeat-guest capture.</p>
                 </div>
               </div>
@@ -1235,7 +1235,7 @@ function PricingSection({
           <h3 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
             {reportUnlocked
               ? "Your AI-generated growth snapshots and recommendations are ready."
-              : "Your free scan found 3 revenue leaks. Unlock the full AI growth plan."}
+              : "Your free scan surfaced a few likely leaks. Unlock the full AI growth plan."}
           </h3>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
             {reportUnlocked
@@ -1306,7 +1306,7 @@ function PricingModal({
                 <h3 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">
                   {reportUnlocked
                     ? "Your AI-generated growth snapshots and recommendations are ready."
-                    : "Your free scan found 3 revenue leaks. Unlock the full AI growth plan."}
+                    : "Your free scan surfaced a few likely leaks. Unlock the full AI growth plan."}
                 </h3>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
                   {reportUnlocked

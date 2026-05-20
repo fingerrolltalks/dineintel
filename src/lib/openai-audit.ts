@@ -6,7 +6,7 @@ import type { WebsiteAuditSnapshot } from "@/lib/website-snapshot";
 const auditResponseSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["score", "headline", "opportunities", "categories"],
+  required: ["score", "headline", "scores", "opportunities", "categories"],
   properties: {
     score: { type: "integer" },
     headline: { type: "string" },
@@ -114,6 +114,7 @@ function isAuditResult(value: unknown): value is AuditResult {
   return (
     typeof candidate.score === "number" &&
     typeof candidate.headline === "string" &&
+    candidate.scores !== undefined &&
     Array.isArray(candidate.opportunities) &&
     candidate.opportunities.length >= 5 &&
     Array.isArray(candidate.categories) &&
@@ -156,7 +157,7 @@ Use PageSpeed and Places only when present. Do not invent missing Google data.`
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12_000);
+    const timeout = setTimeout(() => controller.abort(), 60_000);
 
     try {
       const response = await openaiClient.responses.create(
