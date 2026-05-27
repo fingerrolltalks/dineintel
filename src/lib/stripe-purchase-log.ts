@@ -1,7 +1,8 @@
 import type Stripe from "stripe";
+import { createHmac } from "node:crypto";
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { getSql, requireSql } from "@/lib/database";
+import { getSql, isDatabaseConfigured, requireSql } from "@/lib/database";
 import type { CheckoutPlanId } from "@/lib/stripe";
 import { upsertMonitoringSubscriptionFromPurchase } from "@/lib/monitoring-storage";
 
@@ -38,12 +39,15 @@ type PurchaseLookup = {
   customerEmail?: string | null;
   restaurantName?: string | null;
   restaurantWebsite?: string | null;
+  shareToken?: string | null;
 };
 
 type PurchaseAccess = {
   unlocked: boolean;
   record: StripePurchaseRecord | null;
   matchedBy: string | null;
+  restoreUnavailable?: boolean;
+  shareToken?: string | null;
 };
 
 export type PurchaseStatus = {
@@ -59,6 +63,48 @@ function normalize(value?: string | null) {
 
 function normalizeUrl(value?: string | null) {
   return value?.trim().toLowerCase().replace(/\/$/, "") ?? "";
+}
+
+function logDevPurchaseAccess(message: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "production") return;
+  console.warn("[dineleak] purchase access restore", details ? { message, ...details } : { message });
+}
+
+function getShareTokenSecret() {
+  return process.env.DINELEAK_SHARE_SECRET?.trim() || process.env.STRIPE_SECRET_KEY?.trim() || "dineleak-dev-share-secret";
+}
+
+function createShareToken(sessionId: string) {
+  return createHmac("sha256", getShareTokenSecret()).update(sessionId).digest("base64url");
+}
+
+function matchesShareToken(record: StripePurchaseRecord, shareToken: string) {
+  return Boolean(record.sessionId) && createShareToken(record.sessionId as string) === shareToken;
+}
+
+function mapPurchaseRow(row: Record<string, unknown>): StripePurchaseRecord {
+  return {
+    recordId: row.record_id as string,
+    sessionId: row.session_id as string | null,
+    invoiceId: row.invoice_id as string | null,
+    subscriptionId: row.subscription_id as string | null,
+    customerEmail: row.customer_email as string | null,
+    productName: row.product_name as string | null,
+    priceId: row.price_id as string | null,
+    amountPaid: row.amount_paid as number,
+    paymentStatus: row.payment_status as string | null,
+    createdAt: row.created_at as string,
+    restaurantName: row.restaurant_name as string | null,
+    restaurantWebsite: row.restaurant_website as string | null,
+    restaurantSocial: row.restaurant_social as string | null,
+    restaurantInstagram: row.restaurant_instagram as string | null,
+    restaurantTikTok: row.restaurant_tiktok as string | null,
+    restaurantCuisine: row.restaurant_cuisine as string | null,
+    restaurantCity: row.restaurant_city as string | null,
+    productType: row.product_type as string | null,
+    currency: row.currency as string | null,
+    sourceEvent: row.source_event as StripePurchaseRecord["sourceEvent"],
+  };
 }
 
 async function ensureSchema() {
@@ -310,72 +356,144 @@ export async function findReportPurchase(lookup: PurchaseLookup): Promise<Purcha
   const normalizedEmail = normalize(lookup.customerEmail);
   const normalizedRestaurantName = normalize(lookup.restaurantName);
   const normalizedWebsite = normalizeUrl(lookup.restaurantWebsite);
+  const sessionId = lookup.sessionId?.trim() || "";
+  const shareToken = lookup.shareToken?.trim() || "";
+  const hasRestaurantLookup = Boolean(normalizedRestaurantName && normalizedWebsite);
+  const hasLookup = Boolean(sessionId || normalizedEmail || hasRestaurantLookup || shareToken);
 
-  if (sql) {
-    await ensureSchema();
-
-    const [record] = await sql`
-      SELECT *
-      FROM dineintel_purchases
-      WHERE product_type = 'report'
-        AND payment_status IS NOT NULL
-        AND payment_status IN ('paid', 'complete', 'succeeded')
-        AND (
-          (${lookup.sessionId ?? null} IS NOT NULL AND session_id = ${lookup.sessionId ?? null})
-          OR (${normalizedEmail} <> '' AND customer_email_norm = ${normalizedEmail})
-          OR (${normalizedRestaurantName} <> '' AND restaurant_name_norm = ${normalizedRestaurantName} AND restaurant_website_norm = ${normalizedWebsite})
-        )
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-
-    if (record) {
-      return {
-        unlocked: true,
-        matchedBy: record.session_id ? "session" : record.customer_email ? "email" : "restaurant",
-        record: {
-          recordId: record.record_id,
-          sessionId: record.session_id,
-          invoiceId: record.invoice_id,
-          subscriptionId: record.subscription_id,
-          customerEmail: record.customer_email,
-          productName: record.product_name,
-          priceId: record.price_id,
-          amountPaid: record.amount_paid,
-          paymentStatus: record.payment_status,
-          createdAt: record.created_at,
-          restaurantName: record.restaurant_name,
-          restaurantWebsite: record.restaurant_website,
-          restaurantSocial: record.restaurant_social,
-          restaurantInstagram: record.restaurant_instagram,
-          restaurantTikTok: record.restaurant_tiktok,
-          restaurantCuisine: record.restaurant_cuisine,
-          restaurantCity: record.restaurant_city,
-          productType: record.product_type,
-          currency: record.currency,
-          sourceEvent: record.source_event as StripePurchaseRecord["sourceEvent"],
-        },
-      };
-    }
+  if (!hasLookup) {
+    logDevPurchaseAccess("skipping restore check because no lookup identifiers were provided");
+    return { unlocked: false, matchedBy: null, record: null };
   }
 
-  const fallbackRecord = (globalThis.__dineleakStripePurchases ?? []).find((record) => {
+  if (sql) {
+    try {
+      await ensureSchema();
+
+      let matchedBy: PurchaseAccess["matchedBy"] = null;
+      let record: Record<string, unknown> | undefined;
+
+      if (sessionId) {
+        [record] = await sql`
+          SELECT *
+          FROM dineintel_purchases
+          WHERE product_type = 'report'
+            AND payment_status IS NOT NULL
+            AND payment_status IN ('paid', 'complete', 'succeeded')
+            AND session_id = ${sessionId}
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
+        matchedBy = record ? "session" : null;
+      }
+
+      if (!record && normalizedEmail) {
+        [record] = await sql`
+          SELECT *
+          FROM dineintel_purchases
+          WHERE product_type = 'report'
+            AND payment_status IS NOT NULL
+            AND payment_status IN ('paid', 'complete', 'succeeded')
+            AND customer_email_norm = ${normalizedEmail}
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
+        matchedBy = record ? "email" : null;
+      }
+
+      if (!record && hasRestaurantLookup) {
+        [record] = await sql`
+          SELECT *
+          FROM dineintel_purchases
+          WHERE product_type = 'report'
+            AND payment_status IS NOT NULL
+            AND payment_status IN ('paid', 'complete', 'succeeded')
+            AND restaurant_name_norm = ${normalizedRestaurantName}
+            AND restaurant_website_norm = ${normalizedWebsite}
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
+        matchedBy = record ? "restaurant" : null;
+      }
+
+      if (!record && shareToken) {
+        const shareMatches = await sql`
+          SELECT *
+          FROM dineintel_purchases
+          WHERE product_type = 'report'
+            AND payment_status IS NOT NULL
+            AND payment_status IN ('paid', 'complete', 'succeeded')
+          ORDER BY created_at DESC
+          LIMIT 250
+        `;
+
+        const match = shareMatches.find((candidate) => matchesShareToken(mapPurchaseRow(candidate as Record<string, unknown>), shareToken));
+
+        if (match) {
+          record = match as Record<string, unknown>;
+          matchedBy = "share";
+        }
+      }
+
+      if (record) {
+        return {
+          unlocked: true,
+          matchedBy,
+          record: {
+            recordId: record.record_id as string,
+            sessionId: record.session_id as string | null,
+            invoiceId: record.invoice_id as string | null,
+            subscriptionId: record.subscription_id as string | null,
+            customerEmail: record.customer_email as string | null,
+            productName: record.product_name as string | null,
+            priceId: record.price_id as string | null,
+            amountPaid: record.amount_paid as number,
+            paymentStatus: record.payment_status as string | null,
+            createdAt: record.created_at as string,
+            restaurantName: record.restaurant_name as string | null,
+            restaurantWebsite: record.restaurant_website as string | null,
+            restaurantSocial: record.restaurant_social as string | null,
+            restaurantInstagram: record.restaurant_instagram as string | null,
+            restaurantTikTok: record.restaurant_tiktok as string | null,
+            restaurantCuisine: record.restaurant_cuisine as string | null,
+            restaurantCity: record.restaurant_city as string | null,
+            productType: record.product_type as string | null,
+            currency: record.currency as string | null,
+            sourceEvent: record.source_event as StripePurchaseRecord["sourceEvent"],
+          },
+          shareToken: record.session_id ? createShareToken(record.session_id as string) : null,
+        };
+      }
+    } catch (error) {
+      logDevPurchaseAccess("database restore check failed; returning locked access", {
+        error: error instanceof Error ? error.message : String(error),
+        databaseConfigured: isDatabaseConfigured(),
+      });
+      return { unlocked: false, matchedBy: null, record: null, restoreUnavailable: true };
+    }
+  } else {
+    logDevPurchaseAccess("database is not configured; restore can only use in-memory dev purchases");
+  }
+
+  const fallbackRecord = process.env.NODE_ENV === "production" ? null : (globalThis.__dineleakStripePurchases ?? []).find((record) => {
     if (record.productType !== "report") return false;
     if (record.paymentStatus && !["paid", "complete", "succeeded"].includes(record.paymentStatus)) return false;
-    if (lookup.sessionId && record.sessionId === lookup.sessionId) return true;
+    if (sessionId && record.sessionId === sessionId) return true;
     if (normalizedEmail && normalize(record.customerEmail) === normalizedEmail) return true;
-    if (normalizedRestaurantName && normalize(record.restaurantName) === normalizedRestaurantName && normalizeUrl(record.restaurantWebsite) === normalizedWebsite) {
+    if (hasRestaurantLookup && normalize(record.restaurantName) === normalizedRestaurantName && normalizeUrl(record.restaurantWebsite) === normalizedWebsite) {
       return true;
     }
+    if (shareToken && matchesShareToken(record, shareToken)) return true;
     return false;
-  });
+  }) ?? null;
 
   return fallbackRecord
     ? {
         unlocked: true,
-        matchedBy: lookup.sessionId && fallbackRecord.sessionId === lookup.sessionId ? "session" : "memory",
-      record: fallbackRecord,
-    }
+        matchedBy: shareToken && matchesShareToken(fallbackRecord, shareToken) ? "share" : lookup.sessionId && fallbackRecord.sessionId === lookup.sessionId ? "session" : "memory",
+        record: fallbackRecord,
+        shareToken: fallbackRecord.sessionId ? createShareToken(fallbackRecord.sessionId) : null,
+      }
     : { unlocked: false, matchedBy: null, record: null };
 }
 

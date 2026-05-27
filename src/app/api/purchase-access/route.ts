@@ -11,6 +11,7 @@ export async function POST(request: Request) {
       customerEmail?: string;
       restaurantName?: string;
       restaurantWebsite?: string;
+      shareToken?: string;
     };
 
     const access = await findReportPurchase({
@@ -18,11 +19,20 @@ export async function POST(request: Request) {
       customerEmail: body.customerEmail?.trim() || null,
       restaurantName: body.restaurantName?.trim() || null,
       restaurantWebsite: body.restaurantWebsite?.trim() || null,
+      shareToken: body.shareToken?.trim() || null,
     });
 
     return NextResponse.json(access);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to check purchase access.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[dineleak] purchase access endpoint failed safely", { message });
+    }
+    return NextResponse.json({
+      unlocked: false,
+      matchedBy: null,
+      record: null,
+      restoreUnavailable: true,
+    });
   }
 }

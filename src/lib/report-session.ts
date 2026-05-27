@@ -2,6 +2,7 @@ import type { AuditResult } from "@/lib/audit";
 
 const REPORT_RESULT_KEY = "dineleak-report-result";
 const REPORT_UNLOCK_KEY = "dineleak-report-unlocked";
+const REPORT_SHARE_TOKEN_KEY = "dineleak-report-share-token";
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -33,4 +34,18 @@ export function setReportUnlocked(unlocked: boolean) {
 export function isReportUnlocked() {
   if (!isBrowser()) return false;
   return window.localStorage.getItem(REPORT_UNLOCK_KEY) === "1";
+}
+
+export function saveReportShareToken(token: string | null) {
+  if (!isBrowser()) return;
+  if (!token) {
+    window.localStorage.removeItem(REPORT_SHARE_TOKEN_KEY);
+    return;
+  }
+  window.localStorage.setItem(REPORT_SHARE_TOKEN_KEY, token);
+}
+
+export function loadReportShareToken() {
+  if (!isBrowser()) return null;
+  return window.localStorage.getItem(REPORT_SHARE_TOKEN_KEY);
 }
