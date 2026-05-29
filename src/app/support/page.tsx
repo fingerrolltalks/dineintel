@@ -5,6 +5,9 @@ import { LegalPageShell } from "@/components/LegalPageShell";
 export const metadata: Metadata = {
   title: "Support",
   description: "Get help with DineLeak reports, subscriptions, access, and billing.",
+  alternates: {
+    canonical: "/support",
+  },
 };
 
 export default function SupportPage() {

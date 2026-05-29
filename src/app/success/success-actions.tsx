@@ -27,7 +27,7 @@ export default function SuccessActions({
   }, [isReportPurchase, sessionId]);
 
   function viewReport() {
-    setReportUnlocked(isReportPurchase);
+    if (isReportPurchase && sessionId) setReportUnlocked(true);
     router.push(isReportPurchase ? `/?report=full${sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : ""}` : "/");
   }
 

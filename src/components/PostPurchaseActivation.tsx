@@ -35,23 +35,23 @@ type PostPurchaseStatus = {
 const planCopy = {
   report: {
     title: "Purchase successful",
-    status: "Full report unlocked",
-    next: "Open the homepage to view your report and use the unlock on this device anytime.",
-    included: ["AI growth snapshots", "Priority fixes", "Conversion leaks", "Recommended next actions"],
-    frequency: "Instant access",
+    status: "Full Growth Report Unlocked",
+    next: "Open the homepage to view your premium AI revenue audit report and use the unlock on this device anytime.",
+    included: ["AI revenue audit report", "Revenue leakage dashboard", "Competitor benchmark", "30-day action plan"],
+    frequency: "Full Growth Report",
   },
   starter: {
     title: "Monitoring activated",
-    status: "Starter monitoring is live",
+    status: "Monthly monitoring is live",
     next: "Your subscription is stored in DineLeak's database and your next scan is queued automatically.",
     included: ["Website scans", "Google visibility checks", "Review sentiment", "Mobile insights"],
     frequency: "Every 30 days",
   },
   pro: {
     title: "Monitoring activated",
-    status: "Pro monitoring is live",
+    status: "Recurring monitoring is live",
     next: "Your subscription is stored in DineLeak's database and your next scan is queued automatically.",
-    included: ["Everything in Starter", "Competitor checks", "Priority alerts", "Deeper recommendations"],
+    included: ["Website scans", "Google visibility checks", "Review sentiment", "Mobile insights"],
     frequency: "Every 7 days",
   },
 } as const;
@@ -143,7 +143,7 @@ export function PostPurchaseActivation({
               ? monitoring?.active
                 ? "Monitoring is active and the subscription record is stored in DineLeak’s database."
                 : "Payment is complete and your monitoring record is syncing now."
-              : "Your report unlock is active and ready to view."}
+              : "Your Premium AI Growth Report is ready."}
         </p>
       </div>
 

@@ -17,12 +17,10 @@ export const metadata: Metadata = {
   },
   description: "Restaurant growth scanner and audit platform for spotting leaks in visibility, conversion, reviews, social, and retention.",
   keywords: ["DineLeak", "restaurant growth audit", "restaurant SEO", "restaurant marketing", "conversion audit"],
-  alternates: {
-    canonical: "/",
-  },
   manifest: "/manifest.json",
   icons: {
     icon: [
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
       { url: "/favicon.ico" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
@@ -52,6 +50,27 @@ export const metadata: Metadata = {
   },
 };
 
+const orgSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "DineLeak",
+  url: "https://dineleak.app",
+  logo: "https://dineleak.app/icon.png",
+  sameAs: ["https://www.instagram.com/dineleak/"],
+};
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "DineLeak",
+  url: "https://dineleak.app",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: "https://dineleak.app/?q={search_term_string}",
+    "query-input": "required name=search_term_string",
+  },
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -60,6 +79,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <Script id="org-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
+        <Script id="website-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
         {children}
         <SiteFooter />
         {isGoogleAnalyticsEnabled() ? (

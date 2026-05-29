@@ -52,6 +52,9 @@ STRIPE_PRICE_PRO=
 `OPENAI_MODEL` is optional; the default is `gpt-4o-mini`.
 `CRON_SECRET` protects the recurring monitoring cron route in production.
 `GOOGLE_PAGESPEED_API_KEY` and `GOOGLE_PLACES_API_KEY` are optional server-side enrichments. The audit still works without them.
+`GOOGLE_ENRICHMENT_ENABLED`, `PAGESPEED_ENABLED`, and `PLACES_ENABLED` are server-side kill switches. `GOOGLE_API_TIMEOUT_MS` and `GOOGLE_API_MAX_RETRIES` control Google request safety.
+`DINELEAK_SCAN_SECRET` is optional and is used to hash scan IPs for rate limiting.
+Set `DINELEAK_SCAN_SECRET` and send it as the `x-dineleak-scan-secret` header from your own test requests or browser session to bypass rate limiting for admin testing. Public visitors still stay capped at 5 scans/hour.
 `STRIPE_SECRET_KEY` stays server-side only. Use the Stripe test price IDs in `STRIPE_PRICE_REPORT`, `STRIPE_PRICE_STARTER`, and `STRIPE_PRICE_PRO` for local checkout testing.
 `STRIPE_WEBHOOK_SECRET` is needed for Stripe webhook verification in both local testing and production.
 `DATABASE_URL` is preferred, but `POSTGRES_URL` also works for Neon/Vercel Postgres. It stores completed purchases, audits, and recurring monitoring schedules.
@@ -77,6 +80,11 @@ STRIPE_PRICE_STARTER=price_1TWo50J9YwzUC7JXf75tNk9N
 STRIPE_PRICE_PRO=price_1TWo5vJ9YwzUC7JXtPNW0y6q
 GOOGLE_PAGESPEED_API_KEY=
 GOOGLE_PLACES_API_KEY=
+GOOGLE_ENRICHMENT_ENABLED=true
+PAGESPEED_ENABLED=true
+PLACES_ENABLED=true
+GOOGLE_API_TIMEOUT_MS=10000
+GOOGLE_API_MAX_RETRIES=1
 ```
 
 Test vs live:

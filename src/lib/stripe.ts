@@ -20,20 +20,21 @@ export const planConfig: Record<
   report: {
     priceEnvKey: STRIPE_PRICE_ENV_KEYS.report,
     mode: "payment",
-    checkoutName: "DineLeak AI Growth Report",
-    checkoutDescription: "One-time restaurant growth audit with clear fixes, conversion leaks, and priority actions. Instant access after checkout.",
+    checkoutName: "DineLeak Full Growth Plan",
+    checkoutDescription: "One-time AI audit report with downloadable PDF, shareable access, Google-backed signals where available, and AI-estimated insights.",
   },
   starter: {
     priceEnvKey: STRIPE_PRICE_ENV_KEYS.starter,
     mode: "subscription",
-    checkoutName: "DineLeak Growth Monitor Starter",
-    checkoutDescription: "Weekly AI-powered monitoring for website scans, Google visibility, review sentiment, and mobile conversion.",
+    checkoutName: "DineLeak Monitor",
+    checkoutDescription: "Monthly AI monitoring for your restaurant’s online presence with recurring scans, audit history, and Google reputation + website health tracking.",
   },
   pro: {
+    // Pro hidden pending feature differentiation.
     priceEnvKey: STRIPE_PRICE_ENV_KEYS.pro,
     mode: "subscription",
-    checkoutName: "DineLeak Growth Monitor Pro",
-    checkoutDescription: "Premium weekly monitoring with competitor checks, priority alerts, and deeper growth recommendations.",
+    checkoutName: "DineLeak Monitor",
+    checkoutDescription: "Monthly AI monitoring for your restaurant’s online presence with recurring scans, audit history, and Google reputation + website health tracking.",
   },
 };
 

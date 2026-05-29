@@ -18,6 +18,8 @@ import {
   Globe2,
   MousePointerClick,
   Loader2,
+  Eye,
+  Search,
   Share2,
   ShieldCheck,
   Sparkles,
@@ -26,7 +28,7 @@ import {
   TrendingUp,
   Trophy,
   Users,
-  Zap,
+  Wrench,
 } from "lucide-react";
 import type { FormEvent, HTMLAttributes, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -224,17 +226,17 @@ const premiumSections: PremiumSection[] = [
     title: "AI Weekly Monitoring Preview",
     teaser: "This is the subscription layer that catches problems before they become expensive.",
     finding:
-      "Weekly monitoring would show visibility changes, review alerts, social performance shifts, and conversion warnings before they snowball into lost weekends.",
+      "Weekly monitoring would show visibility changes, social performance shifts, and conversion warnings before they snowball into lost weekends.",
     why:
       "Most revenue leaks are small at first. The value of ongoing tracking is catching the pattern early enough to act before demand slips.",
     revenueImpact: "AI-estimated protection range: $400-$900/mo",
     action: "Set weekly thresholds for local visibility, review sentiment, social traction, and mobile CTA performance.",
     priority: "Medium",
     difficulty: "Easy",
-    quickWin: "Turn on weekly alerts and create a single snapshot review each Monday.",
+    quickWin: "Turn on weekly scans and create a single snapshot review each Monday.",
     longTerm: "Compare trend lines against nearby competitors to spot drift before it hurts revenue.",
-    tools: ["DineLeak Monitor", "Google Analytics 4", "Looker Studio", "Slack or email alerts"],
-    prompt: "Act as an AI operations analyst. Create a weekly restaurant growth monitoring dashboard with thresholds for reviews, Google profile engagement, website CTA clicks, menu views, order starts, and social saves. Include alert rules and owner actions for each threshold.",
+    tools: ["DineLeak Monitor", "Google Analytics 4", "Looker Studio", "Google Sheets"],
+    prompt: "Act as an AI operations analyst. Create a weekly restaurant growth monitoring dashboard with thresholds for reviews, Google profile engagement, website CTA clicks, menu views, order starts, and social saves. Include owner actions for each threshold.",
     weeklySteps: [
       "Review one dashboard every Monday before lunch service planning.",
       "Flag any metric that dropped more than 10% week over week.",
@@ -270,27 +272,18 @@ const pricingPlans: PricingPlan[] = [
     price: "$99",
     billing: "One-time",
     cta: "Unlock Full Report",
-    description: "Full premium AI revenue audit report with leakage analysis, benchmarks, projections, and action plan.",
-    highlights: ["Premium report dashboard", "Competitor benchmark", "30-day action plan"],
+    description: "One-time AI audit report with downloadable PDF, shareable access, Google-backed signals where available, and AI-estimated insights.",
+    highlights: ["Downloadable PDF", "Shareable report", "AI-estimated insights"],
     featured: true,
   },
   {
     id: "starter",
-    name: "DineLeak Growth Monitor Starter",
-    price: "$49",
+    name: "DineLeak Monitor",
+    price: "$49.99",
     billing: "Monthly",
     cta: "Start Monitoring",
-    description: "Weekly AI-powered monitoring for website scans, Google visibility, review sentiment, and mobile conversion.",
-    highlights: ["Website scans", "Visibility tracking", "Review alerts"],
-  },
-  {
-    id: "pro",
-    name: "DineLeak Growth Monitor Pro",
-    price: "$99",
-    billing: "Monthly",
-    cta: "Go Pro",
-    description: "Premium weekly monitoring with competitor checks, priority alerts, and deeper growth recommendations.",
-    highlights: ["Competitor tracking", "Priority alerts", "Premium recommendations"],
+    description: "Monthly AI monitoring for your restaurant’s online presence with recurring scans, audit history, and Google reputation + website health tracking.",
+    highlights: ["Monthly AI scans", "Audit history", "Website + reputation tracking"],
   },
 ];
 
@@ -460,6 +453,7 @@ export default function AuditApp() {
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<PricingPlan["id"] | null>(null);
   const [checkoutError, setCheckoutError] = useState("");
+  const [scanError, setScanError] = useState("");
   const [form, setForm] = useState<AuditInput>({
     restaurant: "",
     website: "",
@@ -643,10 +637,11 @@ export default function AuditApp() {
     });
   }, [form.city, form.cuisine, form.restaurant, phase, result]);
 
-  function submitAudit(event: FormEvent<HTMLFormElement>) {
+  async function submitAudit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     previewModeRef.current = false;
     hasTrackedResultsViewRef.current = false;
+    setScanError("");
     trackGaEvent("scan_started", {
       restaurant_name: form.restaurant || undefined,
       cuisine: form.cuisine || undefined,
@@ -664,20 +659,36 @@ export default function AuditApp() {
     auditAbortRef.current = controller;
     if (auditTimeoutRef.current) window.clearTimeout(auditTimeoutRef.current);
     auditTimeoutRef.current = window.setTimeout(() => controller.abort(), 60000);
-    auditRequestRef.current = fetch("/api/audit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(auditInput),
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (auditTimeoutRef.current) window.clearTimeout(auditTimeoutRef.current);
-        if (!response.ok) {
-          throw new Error("Failed to generate audit.");
-        }
-        return (await response.json()) as AuditResponse;
-      })
-      .catch(() => generateAudit(auditInput));
+    try {
+      const scanSecret =
+        typeof window !== "undefined" ? window.localStorage.getItem("dineleak_scan_secret")?.trim() || "" : "";
+      const response = await fetch("/api/audit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(scanSecret ? { "x-dineleak-scan-secret": scanSecret } : {}),
+        },
+        body: JSON.stringify(auditInput),
+        signal: controller.signal,
+      });
+
+      if (auditTimeoutRef.current) window.clearTimeout(auditTimeoutRef.current);
+
+      if (response.status === 429) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        setScanError(data.error || "You’ve reached the hourly scan limit. Please try again later.");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to generate audit.");
+      }
+
+      const serverResult = (await response.json()) as AuditResponse;
+      auditRequestRef.current = Promise.resolve(serverResult);
+    } catch {
+      auditRequestRef.current = Promise.resolve(generateAudit(auditInput));
+    }
     setPhase("scan");
   }
 
@@ -724,149 +735,215 @@ export default function AuditApp() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-x-clip px-4 py-5 text-white antialiased sm:px-6 lg:px-8">
-      <AmbientFood />
-      <nav className="relative z-10 mx-auto flex w-full max-w-[1180px] items-center justify-between py-3">
-        <div className="flex items-center gap-3.5">
-          <div className="grid size-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#9DFF00)] text-ink shadow-[0_0_32px_rgba(198,255,0,.42)] transition duration-300 hover:rotate-[-4deg] hover:scale-105">
-            <ChefHat size={23} />
-          </div>
-          <span className="text-2xl font-black tracking-[-0.04em]">{brandName}</span>
-        </div>
-        <a href="#audit" className="rounded-full border border-lime/25 bg-white/[0.04] px-5 py-2.5 text-sm font-black text-white/86 shadow-[inset_0_1px_0_rgba(255,255,255,.07)] transition hover:border-lime/65 hover:bg-lime/10 hover:text-white">
-          {mainCtaLabel}
-        </a>
-      </nav>
-
-      <section className="relative z-10 mx-auto grid w-full max-w-[1180px] min-w-0 items-start gap-8 pb-12 pt-10 sm:pt-14 lg:grid-cols-[minmax(0,.92fr)_minmax(0,1fr)] lg:gap-7 lg:pb-16 lg:pt-14 xl:grid-cols-[minmax(0,.88fr)_minmax(0,.98fr)]">
-        <motion.div className="min-w-0 lg:pt-8" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-lime/30 bg-lime/[0.07] px-4 py-2 text-[11px] font-black uppercase tracking-[0.11em] text-lime shadow-[0_0_28px_rgba(198,255,0,.12)]">
-            <span className="size-2 rounded-full bg-lime shadow-[0_0_16px_rgba(198,255,0,.9)]" />
-            Free 60-second leak scan
-          </div>
-          <h1 className="max-w-5xl text-[3.15rem] font-extrabold uppercase leading-[0.94] tracking-[-0.062em] text-white sm:text-[4.75rem] lg:text-[4.05rem] xl:text-[4.95rem]">
-            Your restaurant is
-            <span className="neon-headline block">leaking revenue.</span>
-          </h1>
-          <p className="mt-6 max-w-[41rem] text-base leading-7 text-white/74 sm:text-lg sm:leading-8">
-            {brandName} generates AI-generated growth snapshots and recommendations from your restaurant’s public presence to identify hidden customer friction, trust gaps, and lost revenue opportunities before guests choose somewhere else.
-          </p>
-          <div className="mt-7 grid min-w-0 gap-3 sm:grid-cols-3">
-            {[
-              ["Find hidden leaks", "Before they cost you"],
-              ["See what guests notice", "First"],
-              ["Fix issues that", "Recover revenue"],
-            ].map(([title, body]) => (
-              <div key={title} className="group min-w-0 rounded-2xl border border-white/[0.075] bg-white/[0.035] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,.05)] transition hover:-translate-y-0.5 hover:border-lime/30 hover:bg-lime/[0.05]">
-                <div className="mb-2 grid size-8 place-items-center rounded-xl bg-lime/10 text-lime">
-                  <Zap size={16} />
+    <main className={`relative min-h-screen overflow-x-clip bg-[#05070B] text-white antialiased ${phase === "results" ? "px-4 py-5 sm:px-6 lg:px-8" : ""}`}>
+      {phase !== "results" && (
+        <>
+          <section className="relative overflow-hidden bg-[#05070B] px-4 pb-12 pt-5 sm:px-6 lg:px-8">
+            <AmbientFood />
+            <nav className="relative z-10 mx-auto flex w-full max-w-[1180px] items-center justify-between border-b border-white/10 pb-5">
+              <div className="flex items-center gap-3.5">
+                <div className="grid size-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#E7FF54,#B8FF12)] text-ink shadow-[0_0_32px_rgba(184,255,18,.42)]">
+                  <ChefHat size={23} />
                 </div>
-                <p className="text-xs font-black leading-5 text-white">{title}</p>
-                <p className="text-xs leading-5 text-white/52">{body}</p>
+                <span className="text-2xl font-black tracking-[-0.04em]">{brandName}</span>
               </div>
-            ))}
-          </div>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a href="#audit" className="group inline-flex items-center justify-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-7 py-5 text-base font-black uppercase tracking-[-0.015em] text-ink shadow-[0_0_48px_rgba(198,255,0,.34)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_0_72px_rgba(198,255,0,.46)]">
-              {mainCtaLabel}
-              <ArrowRight className="transition group-hover:translate-x-1.5" size={21} />
-            </a>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-5 py-4 text-sm leading-6 text-white/64">
-              No login. No card. 100% free.
-            </div>
-          </div>
-          <div className="mt-7 flex flex-wrap items-center gap-3 text-sm text-white/70">
-            <div className="flex -space-x-2">
-              {["A", "B", "C"].map((item) => (
-                <span key={item} className="grid size-8 place-items-center rounded-full border border-black bg-gradient-to-br from-white to-lime/50 text-xs font-black text-ink">
-                  {item}
-                </span>
-              ))}
-            </div>
-            <span className="text-lime">★★★★★</span>
-            <span>Used by independent restaurants looking for clearer growth signals</span>
-          </div>
-          <div className="mt-6 max-w-xl rounded-3xl border border-lime/15 bg-lime/[0.035] p-4 text-sm leading-6 text-white/70 shadow-[0_0_28px_rgba(198,255,0,.07)]">
-            <span className="font-black text-lime">Example insight:</span> Your menu may be hard to find on mobile, causing guests to leave before ordering.
-          </div>
-        </motion.div>
+              <div className="hidden items-center gap-9 text-sm font-black text-white/88 lg:flex">
+                <a href="#how-it-works" className="transition hover:text-lime">How It Works</a>
+                <a href="#features" className="transition hover:text-lime">Features</a>
+                <a href="#pricing" className="transition hover:text-lime">Pricing</a>
+                <a href="#resources" className="transition hover:text-lime">Resources</a>
+                <a href="#testimonials" className="transition hover:text-lime">Testimonials</a>
+              </div>
+              <div className="flex items-center gap-3">
+                <a href="#audit" className="hidden text-sm font-black text-white/86 transition hover:text-lime sm:inline-flex">Log In</a>
+                <a href="#audit" className="rounded-xl bg-[#B8FF12] px-4 py-3 text-sm font-black text-ink shadow-[0_0_34px_rgba(184,255,18,.34)] transition hover:-translate-y-0.5 hover:bg-[#C6FF18] sm:px-6">
+                  {mainCtaLabel}
+                </a>
+              </div>
+            </nav>
 
-        <div className="grid w-full min-w-0 max-w-[560px] justify-self-center gap-5 lg:justify-self-end">
-          <RevenueLeakCard />
-          {phase !== "results" && (
-            <section id="audit" className="glass relative w-full min-w-0 max-w-full overflow-hidden rounded-[1.65rem] p-5 ring-1 ring-lime/12 transition duration-500 hover:-translate-y-1 hover:ring-lime/28 sm:p-6">
-              <AnimatePresence mode="wait">
-                {phase === "form" && (
-                  <motion.form
-                    key="form"
-                    onSubmit={submitAudit}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="min-w-0 space-y-5"
-                  >
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-[0.14em] text-lime">AI snapshot</p>
-                      <h2 className="mt-2 text-3xl font-black tracking-[-0.04em]">See what guests notice first.</h2>
-                      <p className="mt-3 text-sm leading-6 text-white/62">Enter your details and we’ll generate AI-generated growth snapshots and recommendations from your public links in about 60 seconds. It’s a fast signal, not a guaranteed live audit.</p>
-                    </div>
-                    <Input label="Restaurant Name" value={form.restaurant} onChange={(restaurant) => setForm({ ...form, restaurant })} placeholder="Marlow’s Bistro" required />
-                    <Input label="Website" value={form.website} onChange={(website) => setForm({ ...form, website })} placeholder="https://restaurant.com" required />
-                    <Input label="Instagram" value={form.instagram} onChange={(instagram) => setForm({ ...form, instagram })} placeholder="@restaurant" required />
-                    <Input label="TikTok optional" value={form.tiktok || ""} onChange={(tiktok) => setForm({ ...form, tiktok })} placeholder="@restaurant" />
-                    <button className="group mt-3 flex w-full items-center justify-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-5 text-base font-black uppercase text-ink shadow-[0_0_46px_rgba(198,255,0,.34)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_0_72px_rgba(198,255,0,.46)] focus:outline-none focus:ring-4 focus:ring-lime/25">
-                      {mainCtaLabel}
-                      <ArrowRight className="transition group-hover:translate-x-1.5" size={21} />
-                    </button>
-                    <p className="text-center text-xs leading-5 text-white/44">Private preview. No login. No subscription.</p>
-                  </motion.form>
-                )}
-
-                {phase === "scan" && (
-                  <motion.div key="scan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-[520px] min-w-0 py-2">
-                    <div className="relative overflow-hidden rounded-[1.8rem] border border-lime/15 bg-black/24 p-5">
-                      <div className="scan-grid absolute inset-0 opacity-35" />
-                      <div className="relative mx-auto grid size-56 place-items-center rounded-full border border-lime/25 bg-lime/[0.03] shadow-glow sm:size-64">
-                        <motion.div className="absolute h-px w-56 scan-line sm:w-64" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2.4, ease: "linear" }} />
-                        <motion.div className="absolute size-40 rounded-full border border-lime/15" animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.15, 0.45, 0.15] }} transition={{ repeat: Infinity, duration: 2.8 }} />
-                        <div className="grid size-32 place-items-center rounded-full border border-white/10 bg-white/[0.05]">
-                          <Sparkles className="text-lime" size={42} />
-                        </div>
-                        <div className="absolute bottom-8 rounded-full border border-lime/20 bg-lime/[0.08] px-3 py-1 text-xs font-black text-lime">
-                          {Math.min(96, 18 + step * 19)}% analyzed
-                        </div>
+            <section className="relative z-10 mx-auto grid w-full max-w-[1180px] items-center gap-10 pb-1 pt-10 sm:pt-14 lg:grid-cols-[minmax(0,.88fr)_minmax(460px,1fr)] lg:gap-12 lg:pt-14">
+              <motion.div className="min-w-0" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
+                <div className="mb-5 inline-flex items-center rounded-full border border-[#B8FF12]/45 bg-[#B8FF12]/[0.07] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-[#B8FF12] shadow-[0_0_28px_rgba(184,255,18,.16)]">
+                  AI-Powered Leak Detection
+                </div>
+                <h1 className="max-w-[39rem] text-[2.9rem] font-black leading-[0.92] tracking-[-0.052em] text-white sm:text-[4.05rem] lg:text-[3.95rem] xl:text-[4.45rem]">
+                  Your Restaurant
+                  <span className="block">Is Leaking</span>
+                  <span className="neon-headline block" style={{ filter: "drop-shadow(0 0 10px rgba(184,255,18,.22))" }}>Revenue.</span>
+                </h1>
+                <p className="mt-7 max-w-[39rem] text-base leading-7 text-white/74 sm:text-lg sm:leading-8">
+                  DineLeak finds hidden friction, trust gaps, and lost revenue opportunities before guests choose somewhere else.
+                </p>
+                <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                  {[
+                    ["Find hidden leaks", "Before they cost you", Search],
+                    ["See what guests notice", "First", Eye],
+                    ["Fix issues that", "Recover revenue", Wrench],
+                  ].map(([title, body, Icon]) => (
+                    <div key={title as string} className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,.06)]">
+                      <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#B8FF12]/10 text-[#B8FF12] ring-1 ring-[#B8FF12]/15">
+                        <Icon size={17} />
                       </div>
-                      <div className="relative mt-5 text-center">
-                        <motion.p key={scanSteps[step].label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-xl font-black tracking-tight">
-                          {scanSteps[step].label}
-                        </motion.p>
-                        <p className="mt-2 text-sm leading-6 text-white/55">{scanSteps[step].detail}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-black leading-5 text-white">{title as string}</p>
+                        <p className="text-sm leading-5 text-white/62">{body as string}</p>
                       </div>
                     </div>
+                  ))}
+                </div>
+                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                  <a href="#audit" className="group inline-flex h-[56px] items-center justify-center gap-3 rounded-xl bg-[linear-gradient(135deg,#D7FF2F,#B8FF12)] px-7 text-base font-black uppercase tracking-[-0.015em] text-ink shadow-[0_0_34px_rgba(184,255,18,.30)] transition hover:-translate-y-0.5">
+                    {mainCtaLabel}
+                    <ArrowRight className="transition group-hover:translate-x-1.5" size={21} />
+                  </a>
+                  <div className="inline-flex h-[56px] items-center rounded-xl border border-white/10 bg-white/[0.035] px-5 text-sm leading-6 text-white/72">
+                    No login. No card. 100% free.
+                  </div>
+                </div>
+                <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-white/70">
+                  <div className="flex -space-x-2">
+                    {["R", "G", "B"].map((item) => (
+                      <span key={item} className="grid size-9 place-items-center rounded-full border-2 border-[#05070B] bg-gradient-to-br from-white to-[#B8FF12]/60 text-xs font-black text-ink">
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                  <span className="text-[#FFC83D]">★★★★★</span>
+                  <span>Used by independent restaurants looking for clearer growth signals.</span>
+                </div>
+              </motion.div>
 
-                    <div className="mt-5 space-y-3">
-                      {scanSteps.map((item, index) => (
-                        <motion.div
-                          key={item.label}
-                          animate={{ opacity: index <= step ? 1 : 0.38, x: index === step ? 6 : 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="group flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 transition hover:border-lime/20 hover:bg-white/[0.06]"
-                        >
-                          <div className="min-w-0">
-                            <span className="text-sm font-bold">{item.label}</span>
-                            <p className="mt-1 hidden text-xs text-white/42 sm:block">{item.detail}</p>
-                          </div>
-                          {index < step ? <CheckCircle2 className="text-lime" size={19} /> : <Clock3 className="text-lime" size={18} />}
-                        </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <RevenueLeakCard />
             </section>
-          )}
-        </div>
-      </section>
+          </section>
+
+          <section id="audit" className="relative z-10 bg-[#F7F8FA] px-4 py-14 text-[#070A0F] sm:px-6 lg:px-8 lg:py-20">
+            <div className="mx-auto grid w-full max-w-[1180px] items-start gap-10 lg:grid-cols-[minmax(0,.84fr)_minmax(410px,.82fr)_minmax(0,.98fr)] lg:gap-12">
+              <div id="how-it-works" className="min-w-0 pt-3">
+                <p className="text-sm font-black tracking-[-0.01em] text-[#74B800]">AI Snapshots</p>
+                <h2 className="mt-4 max-w-[20.5rem] text-[2.72rem] font-black leading-[0.94] tracking-[-0.05em] text-[#070A0F] sm:text-[3.3rem]">
+                  See what guests notice first<span className="text-[#B8FF12]">.</span>
+                </h2>
+                <p className="mt-5 max-w-[27rem] text-base leading-7 text-[#5E6673]">
+                  We analyze your public presence and show you exactly what is holding your restaurant back.
+                </p>
+                <div className="mt-9 space-y-4">
+                  {["Social media & website audit", "Guest sentiment analysis", "Actionable growth insights"].map((item) => (
+                    <div key={item} className="flex items-center gap-3 text-base font-semibold text-[#253041]">
+                      <CheckCircle2 className="text-[#A6EA00]" size={19} />
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <section className="relative w-full min-w-0 max-w-full overflow-hidden rounded-[22px] border border-slate-200/90 bg-white p-5 text-[#070A0F] shadow-[0_22px_64px_rgba(15,23,42,.09)] sm:p-6">
+                <div className="absolute -right-5 -top-5 grid size-16 place-items-center rounded-full bg-[#B8FF12] text-ink shadow-[0_16px_36px_rgba(184,255,18,.28)]">
+                  <Sparkles size={24} />
+                </div>
+                <AnimatePresence mode="wait">
+                  {phase === "form" && (
+                    <motion.form
+                      key="form"
+                      onSubmit={submitAudit}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="min-w-0 space-y-4"
+                    >
+                      <div className="pr-12">
+                        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#76B900]">AI Snapshot</p>
+                        <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-[#070A0F]">See what guests notice first.</h2>
+                        <p className="mt-1 text-xs font-semibold leading-5 text-[#5E6673]">Generated insights based on your public presence</p>
+                      </div>
+                      <Input label="Restaurant Name" value={form.restaurant} onChange={(restaurant) => setForm({ ...form, restaurant })} placeholder="Fox Bros. Bar-B-Q" required />
+                      <Input label="Website" value={form.website} onChange={(website) => setForm({ ...form, website })} placeholder="https://restaurant.com" required />
+                      <Input label="Instagram" value={form.instagram} onChange={(instagram) => setForm({ ...form, instagram })} placeholder="@restaurant" required />
+                      <Input label="TikTok optional" value={form.tiktok || ""} onChange={(tiktok) => setForm({ ...form, tiktok })} placeholder="@restaurant" />
+                      <button className="group mt-3 flex h-[54px] w-full items-center justify-center gap-3 rounded-xl bg-[linear-gradient(135deg,#D7FF2F,#B8FF12)] px-5 text-sm font-black uppercase text-ink shadow-[0_14px_30px_rgba(184,255,18,.24)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#B8FF12]/30">
+                        {mainCtaLabel}
+                        <ArrowRight className="transition group-hover:translate-x-1.5" size={20} />
+                      </button>
+                      {scanError ? <p className="text-sm font-bold text-[#C24141]">{scanError}</p> : null}
+                      <p className="text-center text-xs font-semibold leading-5 text-[#5E6673]">Private preview. No login. No subscription.</p>
+                    </motion.form>
+                  )}
+
+                  {phase === "scan" && (
+                    <motion.div key="scan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-[520px] min-w-0 py-2">
+                      <div className="relative overflow-hidden rounded-[1.4rem] border border-[#B8FF12]/25 bg-[#070A0F] p-5 text-white">
+                        <div className="scan-grid absolute inset-0 opacity-35" />
+                        <div className="relative mx-auto grid size-52 place-items-center rounded-full border border-[#B8FF12]/25 bg-[#B8FF12]/[0.03] shadow-[0_0_42px_rgba(184,255,18,.20)] sm:size-60">
+                          <motion.div className="absolute h-px w-52 scan-line sm:w-60" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2.4, ease: "linear" }} />
+                          <motion.div className="absolute size-36 rounded-full border border-[#B8FF12]/15" animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.15, 0.45, 0.15] }} transition={{ repeat: Infinity, duration: 2.8 }} />
+                          <div className="grid size-28 place-items-center rounded-full border border-white/10 bg-white/[0.05]">
+                            <Sparkles className="text-[#B8FF12]" size={38} />
+                          </div>
+                          <div className="absolute bottom-8 rounded-full border border-[#B8FF12]/20 bg-[#B8FF12]/[0.08] px-3 py-1 text-xs font-black text-[#B8FF12]">
+                            {Math.min(96, 18 + step * 19)}% analyzed
+                          </div>
+                        </div>
+                        <div className="relative mt-5 text-center">
+                          <motion.p key={scanSteps[step].label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-xl font-black tracking-tight">
+                            {scanSteps[step].label}
+                          </motion.p>
+                          <p className="mt-2 text-sm leading-6 text-white/60">{scanSteps[step].detail}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 space-y-3">
+                        {scanSteps.map((item, index) => (
+                          <motion.div
+                            key={item.label}
+                            animate={{ opacity: index <= step ? 1 : 0.45, x: index === step ? 6 : 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="group flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[#253041] shadow-sm"
+                          >
+                            <div className="min-w-0">
+                              <span className="text-sm font-bold">{item.label}</span>
+                              <p className="mt-1 hidden text-xs text-[#5E6673] sm:block">{item.detail}</p>
+                            </div>
+                            {index < step ? <CheckCircle2 className="text-[#83C900]" size={19} /> : <Clock3 className="text-[#83C900]" size={18} />}
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </section>
+
+              <div id="features" className="min-w-0 space-y-10 pt-3">
+                <div id="resources">
+                  <h3 className="text-lg font-black text-[#070A0F]">Trusted by restaurants like yours</h3>
+                  <div id="testimonials" className="mt-7 grid grid-cols-2 items-center gap-x-7 gap-y-6 text-center text-slate-400 opacity-70 sm:grid-cols-3 lg:grid-cols-2">
+                    <span className="font-serif text-xl font-black tracking-[-0.04em]">Neighborhood Grill</span>
+                    <span className="mx-auto grid size-20 place-items-center rounded-full border-2 border-slate-300 text-[10px] font-black uppercase leading-tight tracking-[0.12em]">
+                      Urban<br />Kitchen
+                    </span>
+                    <span className="mx-auto rounded-t-2xl border-2 border-slate-300 px-4 py-3 text-[11px] font-black uppercase leading-tight tracking-[0.16em]">
+                      Main<br />Street BBQ
+                    </span>
+                    <span className="font-serif text-2xl italic tracking-[-0.05em]">Metro Bistro</span>
+                    <span className="text-xs font-black uppercase tracking-[0.22em]">Corner Cafe</span>
+                    <span className="rounded-full border border-slate-300 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em]">Local Pizza Co.</span>
+                  </div>
+                </div>
+                <div id="pricing" className="rounded-[24px] border border-slate-200 bg-white p-7 shadow-[0_20px_70px_rgba(15,23,42,.075)]">
+                  <h3 className="text-xl font-black text-[#070A0F]">Ready to stop leaking revenue?</h3>
+                  <p className="mt-3 max-w-md text-sm leading-6 text-[#5E6673]">
+                    Join independent restaurant owners using DineLeak to grow smarter.
+                  </p>
+                  <a href="#audit" className="group mt-5 inline-flex h-[52px] items-center justify-center gap-3 rounded-xl bg-[linear-gradient(135deg,#D7FF2F,#B8FF12)] px-6 text-sm font-black uppercase text-ink shadow-[0_16px_34px_rgba(184,255,18,.25)] transition hover:-translate-y-0.5">
+                    Run Your Free Leak Scan
+                    <ArrowRight className="transition group-hover:translate-x-1.5" size={19} />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
       <AnimatePresence>
         {phase === "results" && result && (
@@ -874,6 +951,7 @@ export default function AuditApp() {
             result={result}
             restart={() => {
               hasTrackedResultsViewRef.current = false;
+              setScanError("");
               setPhase("form");
             }}
             pricingOpen={pricingOpen}
@@ -890,7 +968,6 @@ export default function AuditApp() {
         )}
       </AnimatePresence>
 
-      <TrustStrip />
     </main>
   );
 }
@@ -910,13 +987,13 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="mb-2.5 block text-xs font-black uppercase tracking-[0.04em] text-white/76">{label}</span>
+      <span className="mb-2 block text-[11px] font-black tracking-[0.01em] text-[#253041]">{label}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required={required}
-        className="w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-[1.05rem] text-white outline-none transition duration-300 placeholder:text-white/36 hover:border-lime/30 focus:border-lime/80 focus:shadow-[0_0_34px_rgba(198,255,0,.18)]"
+        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-[#070A0F] outline-none transition placeholder:text-slate-400 hover:border-[#B8FF12]/60 focus:border-[#B8FF12] focus:shadow-[0_0_0_4px_rgba(184,255,18,.18)]"
       />
     </label>
   );
@@ -946,55 +1023,60 @@ function RevenueLeakCard() {
       initial={{ opacity: 0, y: 22 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.12, duration: 0.7 }}
-      className="glass relative w-full min-w-0 max-w-full overflow-hidden rounded-[1.65rem] border-lime/24 p-5 shadow-[0_0_48px_rgba(198,255,0,.11)]"
+      className="relative w-full min-w-0 max-w-[550px] justify-self-center overflow-hidden rounded-[24px] border border-[#B8FF12]/35 bg-[linear-gradient(145deg,rgba(15,22,30,.88),rgba(5,7,11,.94))] p-6 shadow-[0_0_42px_rgba(184,255,18,.12),0_30px_92px_rgba(0,0,0,.46)] backdrop-blur-xl lg:justify-self-end lg:p-8"
     >
-      <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-lime/70 to-transparent" />
-      <div className="scan-grid absolute inset-0 opacity-20" />
+      <div className="absolute -right-20 -top-20 size-72 rounded-full bg-[#B8FF12]/10 blur-3xl" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_15%,rgba(184,255,18,.08),transparent_30rem)]" />
       <div className="relative">
-        <p className="text-center text-xs font-black uppercase tracking-[0.14em] text-white/86">Preview Leak Score</p>
-        <div className="relative mx-auto mt-6 grid size-52 place-items-center">
-          <div className="absolute inset-0 rounded-full bg-lime/10 blur-3xl" />
-          <svg className="absolute inset-0 -rotate-[130deg]" viewBox="0 0 220 220" aria-hidden="true">
-            <circle cx="110" cy="110" r="82" stroke="rgba(255,255,255,.10)" strokeWidth="18" fill="none" strokeLinecap="round" strokeDasharray="386 520" />
-            <motion.circle
-              cx="110"
-              cy="110"
-              r="82"
-              stroke="#C6FF00"
-              strokeWidth="18"
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray="196 520"
-              initial={{ strokeDashoffset: 196 }}
-              animate={{ strokeDashoffset: 0 }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
-            />
-          </svg>
-          <div className="text-center">
-            <div className="text-5xl font-extrabold tracking-[-0.07em] text-white sm:text-6xl">Preview</div>
-            <div className="mt-1 text-sm font-black uppercase tracking-[0.075em] text-lime">Preview only</div>
-            <div className="mx-auto mt-3 w-fit rounded-full border border-red-400/25 bg-red-500/14 px-3 py-1 text-xs font-black text-red-300">Example result</div>
+        <div className="grid items-start gap-5 sm:grid-cols-[minmax(0,1fr)_176px]">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.09em] text-white/92">Preview Leak Score</p>
+            <h2 className="mt-5 text-[2.45rem] font-black leading-none tracking-[-0.06em] text-white sm:text-[2.85rem]">Preview</h2>
+            <p className="mt-1 text-sm font-black uppercase tracking-[0.05em] text-[#B8FF12]">Preview only</p>
+            <div className="mt-4 inline-flex rounded-full border border-[#FF8A8A]/20 bg-[#FF8A8A]/10 px-4 py-2 text-xs font-black text-[#FF9A9A]">Example result</div>
+          </div>
+          <div className="relative mx-auto grid size-40 place-items-center sm:size-44">
+            <svg className="absolute inset-0 -rotate-[145deg]" viewBox="0 0 180 180" aria-hidden="true">
+              <circle cx="90" cy="90" r="66" stroke="rgba(255,255,255,.10)" strokeWidth="17" fill="none" strokeLinecap="round" strokeDasharray="312 430" />
+              <motion.circle
+                cx="90"
+                cy="90"
+                r="66"
+                stroke="#C6FF18"
+                strokeWidth="17"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="206 430"
+                initial={{ strokeDashoffset: 212 }}
+                animate={{ strokeDashoffset: 0 }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
+              />
+            </svg>
+            <div className="text-center">
+              <div className="text-[3rem] font-black leading-none tracking-[-0.065em] text-[#C6FF18]">68<span className="ml-1 text-base tracking-normal text-white">/100</span></div>
+              <div className="mt-2 text-sm font-semibold text-white/70">Leak Score</div>
+            </div>
           </div>
         </div>
 
         <div className="mt-7 border-t border-white/[0.075] pt-5">
-          <p className="mb-3 text-xs font-black uppercase tracking-[0.12em] text-white/70">Top leaks found</p>
-          <div className="space-y-3">
+          <p className="mb-4 text-xs font-black uppercase tracking-[0.12em] text-white/92">Top Leaks Found</p>
+          <div className="space-y-2.5">
             {leaks.map(([label, loss]) => (
-              <div key={label} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-white/[0.07] bg-black/24 px-3 py-3">
+              <div key={label} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.075] bg-black/24 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.035)]">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid size-7 place-items-center rounded-lg bg-lime/12 text-lime">
+                  <span className="grid size-7 place-items-center rounded-lg text-[#C6FF18]">
                     <AlertTriangle size={14} />
                   </span>
-                  <span className="min-w-0 text-sm font-bold text-white/86">{label}</span>
+                  <span className="min-w-0 text-sm font-black text-white">{label}</span>
                 </div>
-                <span className="shrink-0 text-xs font-black text-red-300">{loss}</span>
+                <span className="shrink-0 text-xs font-black text-[#FF8A8A]">{loss}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <button className="group mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/[0.075] bg-white/[0.03] px-5 py-4 text-sm font-black text-white transition hover:border-lime/35 hover:bg-lime/[0.07]">
+        <button type="button" className="group mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.075] bg-white/[0.055] px-5 py-4 text-sm font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,.05)] transition hover:border-[#B8FF12]/35 hover:bg-[#B8FF12]/[0.08]">
           View full report
           <ArrowRight className="transition group-hover:translate-x-1" size={17} />
         </button>
@@ -1892,7 +1974,24 @@ function GoogleBackedMetrics({ googleSignals }: { googleSignals: GoogleAuditSign
   const pageSpeed = googleSignals?.pageSpeed;
   const places = googleSignals?.places;
 
-  if (!pageSpeed && !places) return null;
+  if (!pageSpeed && !places) {
+    return (
+      <ReportCard className="mt-6 border-cyan-400/20 bg-[linear-gradient(145deg,rgba(17,185,255,.08),rgba(0,0,0,.24))] shadow-[0_0_34px_rgba(17,185,255,.08)] lg:mt-8">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">Google-backed data</p>
+            <h3 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">Google enrichment unavailable for this scan</h3>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
+              No live Google PageSpeed or Places data was returned, so the report stays on scan signals only. When Google APIs are configured and the business matches cleanly, this section fills in automatically.
+            </p>
+          </div>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white/58">
+            Fallback-safe
+          </span>
+        </div>
+      </ReportCard>
+    );
+  }
 
   const coreWebVitals = pageSpeed?.coreWebVitals;
 
@@ -2066,25 +2165,25 @@ function PricingSection({
 }) {
   return (
     <ReportCard className="mt-6 border-lime/15 bg-[linear-gradient(145deg,rgba(198,255,0,.08),rgba(14,19,32,.95))] shadow-glow lg:mt-8" id="pricing">
-      <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">
-            {reportUnlocked ? "Premium report unlocked" : "Unlock AI-generated growth snapshots"}
-          </p>
-          <h3 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
-            {reportUnlocked
-              ? "Your AI-generated growth snapshots and recommendations are ready."
-              : "Your free scan surfaced a few likely leaks. Unlock the full AI growth plan."}
-          </h3>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
-            {reportUnlocked
-              ? "You now have instant access to AI-generated growth snapshots and recommendations, while weekly monitoring remains available below."
-              : "Get deeper AI-generated growth snapshots and recommendations, weekly monitoring, review intelligence, conversion recommendations, and competitor tracking."}
-          </p>
-        </div>
+          <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">
+                {reportUnlocked ? "Premium report unlocked" : "Unlock AI-generated growth snapshots"}
+              </p>
+              <h3 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
+                {reportUnlocked
+                  ? "Your AI-generated growth snapshots and recommendations are ready."
+                  : "Your free scan surfaced a few likely leaks. Unlock the full AI growth plan."}
+              </h3>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
+                {reportUnlocked
+                  ? "You now have instant access to AI-generated growth snapshots and recommendations, while monthly monitoring remains available below."
+                  : "Beta access with AI-estimated insights and Google-backed signals where available."}
+              </p>
+            </div>
         <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white/70">
           <ShieldCheck size={14} className="text-lime" />
-          {reportUnlocked ? "Purchase Complete" : "Secure Stripe Checkout"}
+          {reportUnlocked ? "Purchase Complete" : "Beta access"}
         </div>
       </div>
 
@@ -2138,21 +2237,21 @@ function PricingModal({
             style={{ maxHeight: "calc(100vh - 2rem)", overflowY: "auto" }}
           >
             <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">
-            {reportUnlocked ? "Premium report unlocked" : "Premium unlock"}
-          </p>
-                <h3 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">
-                  {reportUnlocked
-                    ? "Your AI-generated growth snapshots and recommendations are ready."
-                    : "Your free scan surfaced a few likely leaks. Unlock the full AI growth plan."}
-                </h3>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
-                  {reportUnlocked
-                    ? "Instant access is already available. Weekly monitoring offers deeper ongoing visibility below."
-                    : "Get deeper AI-generated growth snapshots and recommendations, weekly monitoring, review intelligence, conversion recommendations, and competitor tracking."}
-                </p>
-              </div>
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">
+                {reportUnlocked ? "Premium report unlocked" : "Premium unlock"}
+              </p>
+              <h3 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">
+                {reportUnlocked
+                  ? "Your AI-generated growth snapshots and recommendations are ready."
+                  : "Your free scan surfaced a few likely leaks. Unlock the full AI growth plan."}
+              </h3>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-white/64 sm:text-base sm:leading-7">
+                {reportUnlocked
+                  ? "Instant access is already available. Monthly monitoring offers deeper ongoing visibility below."
+                  : "Beta access with AI-estimated insights and Google-backed signals where available."}
+              </p>
+            </div>
               <button onClick={onClose} className="self-start rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white/70 transition hover:border-lime/30 hover:bg-lime/[0.08] hover:text-white">
                 Close
               </button>
@@ -2300,13 +2399,13 @@ function ScoreRing({ score, size = "default" }: { score: number; size?: "default
 function AmbientFood() {
   return (
     <>
-      <div className="noise-layer pointer-events-none absolute inset-0 opacity-[0.045]" />
-      <div className="mesh-layer pointer-events-none absolute inset-0" />
-      <div className="floor-grid pointer-events-none absolute inset-x-0 top-[24rem] hidden h-[28rem] lg:block" />
-      <div className="pointer-events-none absolute -left-24 top-20 size-[34rem] rounded-full bg-[radial-gradient(circle,rgba(198,255,0,.12),transparent_68%)] blur-3xl" />
-      <div className="ambient-drift pointer-events-none absolute right-0 top-6 hidden h-[620px] w-[560px] rounded-l-[5rem] border border-lime/5 bg-[linear-gradient(145deg,rgba(198,255,0,.095),rgba(183,255,0,.045),rgba(255,255,255,.014))] blur-[1px] lg:block" />
-      <div className="beam-layer pointer-events-none absolute right-0 top-0 hidden h-[620px] w-[620px] lg:block" />
-      <div className="ambient-drift pointer-events-none absolute bottom-20 right-12 hidden size-44 rounded-full border border-lime/15 bg-lime/[0.025] shadow-[0_0_46px_rgba(198,255,0,.22)] lg:block" />
+      <div className="noise-layer pointer-events-none absolute inset-0 opacity-[0.032]" />
+      <div className="mesh-layer pointer-events-none absolute inset-0 opacity-25" />
+      <div className="floor-grid pointer-events-none absolute inset-x-0 top-[24rem] hidden h-[28rem] opacity-22 lg:block" />
+      <div className="pointer-events-none absolute -left-24 top-20 size-[30rem] rounded-full bg-[radial-gradient(circle,rgba(198,255,0,.03),transparent_68%)] blur-3xl" />
+      <div className="ambient-drift pointer-events-none absolute right-0 top-10 hidden h-[560px] w-[520px] rounded-l-[5rem] border border-lime/5 bg-[linear-gradient(145deg,rgba(198,255,0,.024),rgba(183,255,0,.012),rgba(255,255,255,.01))] blur-[1px] lg:block" />
+      <div className="beam-layer pointer-events-none absolute right-0 top-0 hidden h-[620px] w-[620px] lg:block" style={{ opacity: 0.12 }} />
+      <div className="ambient-drift pointer-events-none absolute bottom-20 right-12 hidden size-44 rounded-full border border-lime/10 bg-lime/[0.012] shadow-[0_0_18px_rgba(198,255,0,.08)] lg:block" />
     </>
   );
 }
@@ -2324,27 +2423,5 @@ function GoldBurst() {
         />
       ))}
     </div>
-  );
-}
-
-function TrustStrip() {
-  const cards = [
-    { title: "Visibility", body: "Find the local search gaps hiding demand.", Icon: Globe2 },
-    { title: "Conversion", body: "Turn mobile visitors into orders faster.", Icon: MousePointerClick },
-    { title: "Retention", body: "Capture guests before marketplaces do.", Icon: Users },
-  ];
-
-  return (
-    <section className="relative z-10 mx-auto grid w-full max-w-[1180px] gap-4 pb-10 sm:grid-cols-3">
-      {cards.map(({ title, body, Icon }) => (
-        <div key={title} className="group rounded-3xl border border-white/10 bg-[linear-gradient(145deg,rgba(14,19,32,.86),rgba(255,255,255,.035))] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,.06)] transition duration-300 hover:-translate-y-1 hover:border-lime/35 hover:bg-lime/[0.055] hover:shadow-[0_0_42px_rgba(198,255,0,.12)]">
-          <div className="mb-5 grid size-11 place-items-center rounded-2xl bg-lime/10 text-lime ring-1 ring-lime/20 transition group-hover:scale-105 group-hover:bg-lime group-hover:text-ink">
-            <Icon size={21} />
-          </div>
-          <h3 className="text-xl font-black tracking-[-0.03em]">{title}</h3>
-          <p className="mt-2 text-sm leading-6 text-white/55">{body}</p>
-        </div>
-      ))}
-    </section>
   );
 }

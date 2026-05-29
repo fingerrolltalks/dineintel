@@ -4,6 +4,9 @@ import { LegalPageShell } from "@/components/LegalPageShell";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "Privacy policy for DineLeak data collection, reporting, and support.",
+  alternates: {
+    canonical: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {

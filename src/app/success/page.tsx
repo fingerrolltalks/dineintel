@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import { PostPurchaseActivation } from "@/components/PostPurchaseActivation";
 import SuccessActions from "./success-actions";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function SuccessPage({
   searchParams,
@@ -17,12 +25,10 @@ export default async function SuccessPage({
 
   const includedItems =
     planId === "report"
-      ? ["AI growth snapshots", "Priority fixes", "Conversion leaks", "Recommended next actions"]
-      : planId === "pro"
-        ? ["Everything in Starter", "Competitor checks", "Priority alerts", "Deeper recommendations"]
-        : ["Website scans", "Google visibility checks", "Review sentiment", "Mobile insights"];
+      ? ["AI revenue audit report", "Revenue leakage dashboard", "Competitor benchmark", "30-day action plan"]
+      : ["Website scans", "Google visibility checks", "Review sentiment", "Mobile insights"];
 
-  const monitoringFrequency = planId === "pro" ? "Every 7 days" : planId === "starter" ? "Every 30 days" : "Instant access";
+  const monitoringFrequency = planId === "pro" ? "Every 7 days" : "Every 30 days";
 
   return (
     <main className="relative min-h-screen overflow-x-clip px-4 py-8 text-white antialiased sm:px-6 lg:px-8">
@@ -37,11 +43,11 @@ export default async function SuccessPage({
                 {isReportPurchase ? "Purchase successful" : "Monitoring activated"}
               </p>
               <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">
-                {isReportPurchase ? "Your full report is unlocked" : "Your subscription is live"}
+                {isReportPurchase ? "Your Premium AI Growth Report is ready" : "Your subscription is live"}
               </h1>
               <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/68 sm:text-base lg:mx-0">
                 {isReportPurchase
-                  ? "Your AI-generated growth snapshot is ready now. Open the homepage to view the unlocked report and keep the access on this device."
+                  ? "Your premium AI revenue audit report is ready now. Open the homepage to view the unlocked report and keep the access on this device."
                   : "Your paid monitoring plan is active. DineLeak will keep scanning on the selected cadence and save new results as they arrive."}
               </p>
             </div>
@@ -76,12 +82,12 @@ export default async function SuccessPage({
           <div className="glass rounded-[2rem] p-6 sm:p-8">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">Details</p>
             <h2 className="mt-3 text-2xl font-black text-white">
-              {isReportPurchase ? "Instant report access" : "Recurring monitoring schedule"}
+              {isReportPurchase ? "Full Growth Report Unlocked" : "Recurring monitoring schedule"}
             </h2>
             <div className="mt-5 space-y-4 text-sm leading-7 text-white/72">
               <p>
                 {isReportPurchase
-                  ? "Paid digital reports are delivered instantly after checkout. Your unlock is tied to this purchase and can be reopened from the homepage."
+                  ? "Your Full Growth report unlock is tied to this purchase and can be reopened from the homepage."
                   : `Monitoring frequency: ${monitoringFrequency}. Reports and alerts are generated from available website data and connected sources.`}
               </p>
               <p>

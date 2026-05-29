@@ -26,6 +26,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid checkout plan." }, { status: 400 });
     }
 
+    if (planId === "pro") {
+      console.warn("[dineleak] pro checkout blocked", {
+        deploymentEnv: process.env.VERCEL_ENV ?? "unknown",
+      });
+      return NextResponse.json(
+        { error: "This plan is temporarily unavailable." },
+        { status: 403 },
+      );
+    }
+
     const config = planConfig[planId];
     const { priceId, priceEnvKey } = getPlanPriceId(planId);
     const stripeSecretPresent = Boolean(process.env.STRIPE_SECRET_KEY?.trim());

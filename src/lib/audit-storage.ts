@@ -31,6 +31,7 @@ export type StoredAuditRun = {
   restaurantWebsite: string;
   createdAt: string;
   generatedBy: "openai" | "template";
+  snapshot: WebsiteAuditSnapshot;
   result: AuditResult;
 };
 
@@ -237,6 +238,7 @@ export async function findLatestAuditRunBySubscriptionId(subscriptionId: string)
     restaurantWebsite: row.restaurant_website,
     createdAt: row.created_at,
     generatedBy: row.generated_by,
+    snapshot: row.website_snapshot_json as WebsiteAuditSnapshot,
     result: row.result_json as AuditResult,
   };
 }
@@ -267,6 +269,7 @@ export async function findLatestAuditRunByRestaurant(restaurantName: string, res
     restaurantWebsite: row.restaurant_website,
     createdAt: row.created_at,
     generatedBy: row.generated_by,
+    snapshot: row.website_snapshot_json as WebsiteAuditSnapshot,
     result: row.result_json as AuditResult,
   };
 }

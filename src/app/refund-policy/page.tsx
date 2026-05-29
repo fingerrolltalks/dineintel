@@ -4,6 +4,9 @@ import { LegalPageShell } from "@/components/LegalPageShell";
 export const metadata: Metadata = {
   title: "Refund Policy",
   description: "Refund policy for DineLeak digital reports and subscriptions.",
+  alternates: {
+    canonical: "/refund-policy",
+  },
 };
 
 export default function RefundPolicyPage() {

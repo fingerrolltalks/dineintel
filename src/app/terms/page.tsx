@@ -4,6 +4,9 @@ import { LegalPageShell } from "@/components/LegalPageShell";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description: "Terms for using DineLeak reports, subscriptions, and support.",
+  alternates: {
+    canonical: "/terms",
+  },
 };
 
 export default function TermsPage() {

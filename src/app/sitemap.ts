@@ -7,8 +7,6 @@ const routes = [
   { url: "/privacy", changeFrequency: "yearly" as const, priority: 0.2 },
   { url: "/terms", changeFrequency: "yearly" as const, priority: 0.2 },
   { url: "/refund-policy", changeFrequency: "yearly" as const, priority: 0.2 },
-  { url: "/success", changeFrequency: "monthly" as const, priority: 0.4 },
-  { url: "/cancel", changeFrequency: "monthly" as const, priority: 0.3 },
 ] as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {
