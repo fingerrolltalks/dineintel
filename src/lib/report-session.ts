@@ -9,6 +9,11 @@ function isBrowser() {
   return typeof window !== "undefined";
 }
 
+function notifyReportUnlockChange() {
+  if (!isBrowser()) return;
+  window.dispatchEvent(new Event("dineleak-report-unlock"));
+}
+
 export function saveReportResult(result: AuditResult) {
   if (!isBrowser()) return;
   window.localStorage.setItem(REPORT_RESULT_KEY, JSON.stringify(result));
@@ -32,6 +37,7 @@ export function setReportUnlocked(unlocked: boolean, sessionId?: string | null) 
   if (!unlocked) {
     window.localStorage.removeItem(REPORT_UNLOCK_KEY);
     window.localStorage.removeItem(REPORT_UNLOCK_SESSION_KEY);
+    notifyReportUnlockChange();
     return;
   }
 
@@ -40,6 +46,7 @@ export function setReportUnlocked(unlocked: boolean, sessionId?: string | null) 
   }
 
   window.localStorage.setItem(REPORT_UNLOCK_KEY, unlocked ? "1" : "0");
+  notifyReportUnlockChange();
 }
 
 export function isReportUnlocked() {

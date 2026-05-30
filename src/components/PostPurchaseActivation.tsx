@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { CheckCircle2, Clock3, Loader2, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { setReportUnlocked } from "@/lib/report-session";
+import { isReportUnlocked, setReportUnlocked } from "@/lib/report-session";
 
 type CheckoutPlan = "report" | "starter" | "pro";
 
@@ -35,9 +35,9 @@ type PostPurchaseStatus = {
 
 const planCopy = {
   report: {
-    title: "Purchase successful",
+    title: "Purchase verified",
     status: "Full Growth Report Unlocked",
-    next: "Open the homepage to view your premium AI revenue audit report and use the unlock on this device anytime.",
+    next: "Purchase verified. Your report is unlocked below on this device.",
     included: ["AI revenue audit report", "Revenue leakage dashboard", "Competitor benchmark", "30-day action plan"],
     frequency: "Full Growth Report",
   },
@@ -67,8 +67,32 @@ export function PostPurchaseActivation({
   const [status, setStatus] = useState<PostPurchaseStatus | null>(null);
   const [loading, setLoading] = useState(Boolean(sessionId));
   const [failed, setFailed] = useState(false);
+  const [hasLocalUnlock, setHasLocalUnlock] = useState(() => isReportUnlocked());
 
   const plan = useMemo(() => planCopy[planId], [planId]);
+  const reportUnlocked = planId === "report" && (hasLocalUnlock || Boolean(status?.purchase));
+  const showFailure = failed && !reportUnlocked;
+
+  useEffect(() => {
+    if (planId !== "report") return;
+
+    const syncUnlockState = () => {
+      const unlocked = isReportUnlocked();
+      setHasLocalUnlock(unlocked);
+      if (unlocked) {
+        setFailed(false);
+      }
+    };
+
+    syncUnlockState();
+    window.addEventListener("dineleak-report-unlock", syncUnlockState);
+    window.addEventListener("storage", syncUnlockState);
+
+    return () => {
+      window.removeEventListener("dineleak-report-unlock", syncUnlockState);
+      window.removeEventListener("storage", syncUnlockState);
+    };
+  }, [planId]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -96,7 +120,9 @@ export function PostPurchaseActivation({
             setStatus(data);
             if (planId === "report" && sessionId) {
               setReportUnlocked(true, sessionId);
+              setHasLocalUnlock(true);
             }
+            setFailed(false);
             setLoading(false);
             return;
           }
@@ -109,6 +135,11 @@ export function PostPurchaseActivation({
 
       if (!cancelled) {
         setLoading(false);
+        if (planId === "report" && isReportUnlocked()) {
+          setHasLocalUnlock(true);
+          setFailed(false);
+          return;
+        }
         setFailed(true);
       }
     }
@@ -128,6 +159,20 @@ export function PostPurchaseActivation({
   const isMonitoring = planId === "starter" || planId === "pro";
   const monitoring = status?.monitoring;
   const errorMessage = "Payment received, but we could not unlock your access yet. Please contact support at dineleak@gmail.com.";
+  const activationMessage =
+    planId === "report"
+      ? reportUnlocked
+        ? "Your Premium AI Growth Report is unlocked."
+        : "Confirming your purchase… this can take a few seconds."
+      : failed && !loading
+        ? errorMessage
+        : loading
+          ? "Confirming your purchase… this can take a few seconds."
+          : isMonitoring
+            ? monitoring?.active
+              ? "Monitoring is active and the subscription record is stored in DineLeak’s database."
+              : "Payment is complete and your monitoring record is syncing now."
+            : "Your Premium AI Growth Report is ready.";
 
   return (
     <section className="rounded-[1.8rem] border border-white/10 bg-white/[0.03] p-5 text-left sm:p-6">
@@ -137,22 +182,16 @@ export function PostPurchaseActivation({
         </div>
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">{loading ? "Confirming" : "Activation confirmed"}</p>
-          <h2 className="mt-1 text-2xl font-black leading-tight text-white">{resolvedStatus.title}</h2>
+          <h2 className="mt-1 text-2xl font-black leading-tight text-white">{reportUnlocked ? "Purchase verified" : resolvedStatus.title}</h2>
         </div>
       </div>
 
       <div className="mt-5 rounded-2xl border border-lime/15 bg-lime/[0.06] p-4">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-lime">{loading ? "Waiting for DB sync" : failed ? "Verification pending" : resolvedStatus.status}</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-lime">{loading ? "Waiting for DB sync" : showFailure ? "Verification pending" : resolvedStatus.status}</p>
           <p className="mt-2 text-sm leading-7 text-white/78">
-            {failed && !loading
+            {showFailure
               ? errorMessage
-              : loading
-              ? "Confirming your purchase… this can take a few seconds."
-              : isMonitoring
-                ? monitoring?.active
-                  ? "Monitoring is active and the subscription record is stored in DineLeak’s database."
-                  : "Payment is complete and your monitoring record is syncing now."
-              : "Your Premium AI Growth Report is ready."}
+              : activationMessage}
         </p>
       </div>
 
