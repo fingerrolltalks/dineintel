@@ -246,6 +246,23 @@ export async function findRecurringSubscription(subscriptionId: string) {
   return row ? toMonitoringSubscription(row as Record<string, unknown>) : null;
 }
 
+export async function findRecurringSubscriptionByEmail(customerEmail: string) {
+  const sql = getSql();
+  const emailNorm = normalize(customerEmail);
+  if (!sql || !emailNorm) return null;
+
+  await ensureSchema();
+  const [row] = await sql`
+    SELECT *
+    FROM dineintel_monitoring_subscriptions
+    WHERE customer_email_norm = ${emailNorm}
+    ORDER BY active DESC, updated_at DESC, created_at DESC
+    LIMIT 1
+  `;
+
+  return row ? toMonitoringSubscription(row as Record<string, unknown>) : null;
+}
+
 export async function markRecurringScanComplete(payload: {
   subscriptionId: string;
   auditId: string;

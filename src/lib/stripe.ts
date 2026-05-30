@@ -27,14 +27,14 @@ export const planConfig: Record<
     priceEnvKey: STRIPE_PRICE_ENV_KEYS.starter,
     mode: "subscription",
     checkoutName: "DineLeak Monitor",
-    checkoutDescription: "Monthly AI monitoring for your restaurant’s online presence with recurring scans, audit history, and Google reputation + website health tracking.",
+    checkoutDescription: "Monthly AI monitoring for your restaurant’s online presence with recurring scans, saved report history, downloadable reports, view reports anytime by email, and Google reputation + website health tracking.",
   },
   pro: {
     // Pro hidden pending feature differentiation.
     priceEnvKey: STRIPE_PRICE_ENV_KEYS.pro,
     mode: "subscription",
     checkoutName: "DineLeak Monitor",
-    checkoutDescription: "Monthly AI monitoring for your restaurant’s online presence with recurring scans, audit history, and Google reputation + website health tracking.",
+    checkoutDescription: "Monthly AI monitoring for your restaurant’s online presence with recurring scans, saved report history, downloadable reports, view reports anytime by email, and Google reputation + website health tracking.",
   },
 };
 

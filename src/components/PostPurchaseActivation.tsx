@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { CheckCircle2, Clock3, Loader2, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { setReportUnlocked } from "@/lib/report-session";
 
 type CheckoutPlan = "report" | "starter" | "pro";
 
@@ -43,15 +44,15 @@ const planCopy = {
   starter: {
     title: "Monitoring activated",
     status: "Monthly monitoring is live",
-    next: "Your subscription is stored in DineLeak's database and your next scan is queued automatically.",
-    included: ["Website scans", "Google visibility checks", "Review sentiment", "Mobile insights"],
+    next: "Monitoring is active. View your saved reports on the reports page. Use the same email from checkout.",
+    included: ["Monthly AI scans", "Saved report history", "Website + reputation tracking", "Downloadable reports"],
     frequency: "Every 30 days",
   },
   pro: {
     title: "Monitoring activated",
     status: "Recurring monitoring is live",
-    next: "Your subscription is stored in DineLeak's database and your next scan is queued automatically.",
-    included: ["Website scans", "Google visibility checks", "Review sentiment", "Mobile insights"],
+    next: "Monitoring is active. View your saved reports on the reports page. Use the same email from checkout.",
+    included: ["Monthly AI scans", "Saved report history", "Website + reputation tracking", "Downloadable reports"],
     frequency: "Every 7 days",
   },
 } as const;
@@ -65,6 +66,7 @@ export function PostPurchaseActivation({
 }) {
   const [status, setStatus] = useState<PostPurchaseStatus | null>(null);
   const [loading, setLoading] = useState(Boolean(sessionId));
+  const [failed, setFailed] = useState(false);
 
   const plan = useMemo(() => planCopy[planId], [planId]);
 
@@ -78,7 +80,7 @@ export function PostPurchaseActivation({
     const controller = new AbortController();
 
     async function poll() {
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+      for (let attempt = 0; attempt < 24; attempt += 1) {
         try {
           const response = await fetch("/api/post-purchase-status", {
             method: "POST",
@@ -92,6 +94,9 @@ export function PostPurchaseActivation({
 
           if (response.ok && data.found) {
             setStatus(data);
+            if (planId === "report" && sessionId) {
+              setReportUnlocked(true, sessionId);
+            }
             setLoading(false);
             return;
           }
@@ -104,6 +109,7 @@ export function PostPurchaseActivation({
 
       if (!cancelled) {
         setLoading(false);
+        setFailed(true);
       }
     }
 
@@ -113,7 +119,7 @@ export function PostPurchaseActivation({
       cancelled = true;
       controller.abort();
     };
-  }, [sessionId]);
+  }, [planId, sessionId]);
 
   const resolvedStatus =
     status?.purchase?.productType && status.purchase.productType in planCopy
@@ -121,6 +127,7 @@ export function PostPurchaseActivation({
       : plan;
   const isMonitoring = planId === "starter" || planId === "pro";
   const monitoring = status?.monitoring;
+  const errorMessage = "Payment received, but we could not unlock your access yet. Please contact support at dineleak@gmail.com.";
 
   return (
     <section className="rounded-[1.8rem] border border-white/10 bg-white/[0.03] p-5 text-left sm:p-6">
@@ -129,20 +136,22 @@ export function PostPurchaseActivation({
           {loading ? <Loader2 size={22} className="animate-spin" /> : <CheckCircle2 size={22} />}
         </div>
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">{loading ? "Activating" : "Activation confirmed"}</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">{loading ? "Confirming" : "Activation confirmed"}</p>
           <h2 className="mt-1 text-2xl font-black leading-tight text-white">{resolvedStatus.title}</h2>
         </div>
       </div>
 
       <div className="mt-5 rounded-2xl border border-lime/15 bg-lime/[0.06] p-4">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-lime">{loading ? "Waiting for DB sync" : resolvedStatus.status}</p>
-        <p className="mt-2 text-sm leading-7 text-white/78">
-          {loading
-            ? "Stripe payment is complete. We’re confirming the purchase record and monitoring record now."
-            : isMonitoring
-              ? monitoring?.active
-                ? "Monitoring is active and the subscription record is stored in DineLeak’s database."
-                : "Payment is complete and your monitoring record is syncing now."
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-lime">{loading ? "Waiting for DB sync" : failed ? "Verification pending" : resolvedStatus.status}</p>
+          <p className="mt-2 text-sm leading-7 text-white/78">
+            {failed && !loading
+              ? errorMessage
+              : loading
+              ? "Confirming your purchase… this can take a few seconds."
+              : isMonitoring
+                ? monitoring?.active
+                  ? "Monitoring is active and the subscription record is stored in DineLeak’s database."
+                  : "Payment is complete and your monitoring record is syncing now."
               : "Your Premium AI Growth Report is ready."}
         </p>
       </div>

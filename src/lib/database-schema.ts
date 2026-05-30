@@ -101,6 +101,18 @@ export async function ensureDineLeakDatabaseSchema() {
     await sql`CREATE INDEX IF NOT EXISTS dineintel_scan_requests_restaurant_idx ON dineintel_scan_requests (restaurant_name_norm, restaurant_website_norm, created_at DESC)`;
 
     await sql`
+      CREATE TABLE IF NOT EXISTS dineintel_report_lookup_requests (
+        request_id text PRIMARY KEY,
+        ip_hash text NOT NULL,
+        email_norm text,
+        route text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS dineintel_report_lookup_requests_ip_idx ON dineintel_report_lookup_requests (ip_hash, created_at DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS dineintel_report_lookup_requests_email_idx ON dineintel_report_lookup_requests (email_norm, created_at DESC)`;
+
+    await sql`
       CREATE TABLE IF NOT EXISTS dineintel_monitoring_subscriptions (
         subscription_id text PRIMARY KEY,
         product_type text NOT NULL,

@@ -282,8 +282,8 @@ const pricingPlans: PricingPlan[] = [
     price: "$49.99",
     billing: "Monthly",
     cta: "Start Monitoring",
-    description: "Monthly AI monitoring for your restaurant’s online presence with recurring scans, audit history, and Google reputation + website health tracking.",
-    highlights: ["Monthly AI scans", "Audit history", "Website + reputation tracking"],
+    description: "Monthly AI monitoring for your restaurant’s online presence with recurring scans, saved report history, downloadable reports, view reports anytime by email, and Google reputation + website health tracking.",
+    highlights: ["Monthly AI scans", "Saved report history", "View reports by email", "Downloadable reports"],
   },
 ];
 
@@ -478,7 +478,7 @@ export default function AuditApp() {
       queryParams.get("preview") === "full-growth";
     const querySessionId = queryParams.get("session_id")?.trim() || "";
     const queryShareToken = queryParams.get("share")?.trim() || "";
-    const storedUnlocked = process.env.NODE_ENV !== "production" && isReportUnlocked();
+    const storedUnlocked = isReportUnlocked();
 
     if (isLocalPreview) {
       previewModeRef.current = true;
@@ -524,11 +524,15 @@ export default function AuditApp() {
 
           if (!response.ok) return;
 
-          const data = (await response.json()) as { unlocked?: boolean; shareToken?: string | null };
+          const data = (await response.json()) as {
+            unlocked?: boolean;
+            shareToken?: string | null;
+            record?: { sessionId?: string | null } | null;
+          };
           if (!data.unlocked) return;
 
           setReportUnlockedState(true);
-          setReportUnlocked(true);
+          setReportUnlocked(true, data.record?.sessionId ?? querySessionId ?? null);
           setPricingOpen(false);
           setShareToken(data.shareToken ?? storedShareToken ?? null);
           saveReportShareToken(data.shareToken ?? storedShareToken ?? null);
@@ -735,12 +739,12 @@ export default function AuditApp() {
   }
 
   return (
-    <main className={`relative min-h-screen overflow-x-clip bg-[#05070B] text-white antialiased ${phase === "results" ? "px-4 py-5 sm:px-6 lg:px-8" : ""}`}>
+    <main className={`scroll-smooth relative min-h-screen overflow-x-clip bg-[#05070B] text-white antialiased ${phase === "results" ? "px-4 py-5 sm:px-6 lg:px-8" : ""}`}>
       {phase !== "results" && (
         <>
-          <section className="relative overflow-hidden bg-[#05070B] px-4 pb-12 pt-5 sm:px-6 lg:px-8">
+          <section className="relative overflow-hidden bg-[#05070B] px-4 pb-9 pt-4 sm:px-6 sm:pb-10 sm:pt-4 lg:px-8">
             <AmbientFood />
-            <nav className="relative z-10 mx-auto flex w-full max-w-[1180px] items-center justify-between border-b border-white/10 pb-5">
+            <nav className="relative z-10 mx-auto flex w-full max-w-[1180px] items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-3.5">
                 <div className="grid size-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#E7FF54,#B8FF12)] text-ink shadow-[0_0_32px_rgba(184,255,18,.42)]">
                   <ChefHat size={23} />
@@ -749,22 +753,18 @@ export default function AuditApp() {
               </div>
               <div className="hidden items-center gap-9 text-sm font-black text-white/88 lg:flex">
                 <a href="#how-it-works" className="transition hover:text-lime">How It Works</a>
-                <a href="#features" className="transition hover:text-lime">Features</a>
                 <a href="#pricing" className="transition hover:text-lime">Pricing</a>
-                <a href="#resources" className="transition hover:text-lime">Resources</a>
-                <a href="#testimonials" className="transition hover:text-lime">Testimonials</a>
               </div>
               <div className="flex items-center gap-3">
-                <a href="#audit" className="hidden text-sm font-black text-white/86 transition hover:text-lime sm:inline-flex">Log In</a>
                 <a href="#audit" className="rounded-xl bg-[#B8FF12] px-4 py-3 text-sm font-black text-ink shadow-[0_0_34px_rgba(184,255,18,.34)] transition hover:-translate-y-0.5 hover:bg-[#C6FF18] sm:px-6">
                   {mainCtaLabel}
                 </a>
               </div>
             </nav>
 
-            <section className="relative z-10 mx-auto grid w-full max-w-[1180px] items-center gap-10 pb-1 pt-10 sm:pt-14 lg:grid-cols-[minmax(0,.88fr)_minmax(460px,1fr)] lg:gap-12 lg:pt-14">
+            <section className="relative z-10 mx-auto grid w-full max-w-[1180px] items-center gap-8 pb-0 pt-8 sm:pt-12 lg:grid-cols-[minmax(0,.88fr)_minmax(460px,1fr)] lg:gap-10 lg:pt-12">
               <motion.div className="min-w-0" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-                <div className="mb-5 inline-flex items-center rounded-full border border-[#B8FF12]/45 bg-[#B8FF12]/[0.07] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-[#B8FF12] shadow-[0_0_28px_rgba(184,255,18,.16)]">
+                <div className="mb-4 inline-flex items-center rounded-full border border-[#B8FF12]/45 bg-[#B8FF12]/[0.07] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-[#B8FF12] shadow-[0_0_28px_rgba(184,255,18,.16)]">
                   AI-Powered Leak Detection
                 </div>
                 <h1 className="max-w-[39rem] text-[2.9rem] font-black leading-[0.92] tracking-[-0.052em] text-white sm:text-[4.05rem] lg:text-[3.95rem] xl:text-[4.45rem]">
@@ -772,10 +772,10 @@ export default function AuditApp() {
                   <span className="block">Is Leaking</span>
                   <span className="neon-headline block" style={{ filter: "drop-shadow(0 0 10px rgba(184,255,18,.22))" }}>Revenue.</span>
                 </h1>
-                <p className="mt-7 max-w-[39rem] text-base leading-7 text-white/74 sm:text-lg sm:leading-8">
+                <p className="mt-6 max-w-[39rem] text-base leading-7 text-white/74 sm:text-lg sm:leading-8">
                   DineLeak finds hidden friction, trust gaps, and lost revenue opportunities before guests choose somewhere else.
                 </p>
-                <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                <div className="mt-7 grid gap-3 sm:grid-cols-3">
                   {[
                     ["Find hidden leaks", "Before they cost you", Search],
                     ["See what guests notice", "First", Eye],
@@ -792,7 +792,7 @@ export default function AuditApp() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <a href="#audit" className="group inline-flex h-[56px] items-center justify-center gap-3 rounded-xl bg-[linear-gradient(135deg,#D7FF2F,#B8FF12)] px-7 text-base font-black uppercase tracking-[-0.015em] text-ink shadow-[0_0_34px_rgba(184,255,18,.30)] transition hover:-translate-y-0.5">
                     {mainCtaLabel}
                     <ArrowRight className="transition group-hover:translate-x-1.5" size={21} />
@@ -801,7 +801,7 @@ export default function AuditApp() {
                     No login. No card. 100% free.
                   </div>
                 </div>
-                <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-white/70">
+                <div className="mt-7 flex flex-wrap items-center gap-3 text-sm text-white/70">
                   <div className="flex -space-x-2">
                     {["R", "G", "B"].map((item) => (
                       <span key={item} className="grid size-9 place-items-center rounded-full border-2 border-[#05070B] bg-gradient-to-br from-white to-[#B8FF12]/60 text-xs font-black text-ink">
@@ -913,31 +913,43 @@ export default function AuditApp() {
                 </AnimatePresence>
               </section>
 
-              <div id="features" className="min-w-0 space-y-10 pt-3">
-                <div id="resources">
+              <div className="min-w-0 space-y-6 pt-1">
+                <div>
                   <h3 className="text-lg font-black text-[#070A0F]">Trusted by restaurants like yours</h3>
-                  <div id="testimonials" className="mt-7 grid grid-cols-2 items-center gap-x-7 gap-y-6 text-center text-slate-400 opacity-70 sm:grid-cols-3 lg:grid-cols-2">
-                    <span className="font-serif text-xl font-black tracking-[-0.04em]">Neighborhood Grill</span>
-                    <span className="mx-auto grid size-20 place-items-center rounded-full border-2 border-slate-300 text-[10px] font-black uppercase leading-tight tracking-[0.12em]">
+                  <div className="mt-5 grid grid-cols-2 items-center gap-x-7 gap-y-4 text-center text-slate-400 opacity-70 sm:grid-cols-3 lg:grid-cols-2">
+                    <span className="font-serif text-lg font-black tracking-[-0.04em]">Neighborhood Grill</span>
+                    <span className="mx-auto grid size-16 place-items-center rounded-full border-2 border-slate-300 text-[9px] font-black uppercase leading-tight tracking-[0.12em]">
                       Urban<br />Kitchen
                     </span>
-                    <span className="mx-auto rounded-t-2xl border-2 border-slate-300 px-4 py-3 text-[11px] font-black uppercase leading-tight tracking-[0.16em]">
+                    <span className="mx-auto rounded-t-2xl border-2 border-slate-300 px-3 py-2 text-[10px] font-black uppercase leading-tight tracking-[0.16em]">
                       Main<br />Street BBQ
                     </span>
-                    <span className="font-serif text-2xl italic tracking-[-0.05em]">Metro Bistro</span>
-                    <span className="text-xs font-black uppercase tracking-[0.22em]">Corner Cafe</span>
-                    <span className="rounded-full border border-slate-300 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em]">Local Pizza Co.</span>
+                    <span className="font-serif text-xl italic tracking-[-0.05em]">Metro Bistro</span>
+                    <span className="text-[11px] font-black uppercase tracking-[0.18em]">Corner Cafe</span>
+                    <span className="rounded-full border border-slate-300 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em]">Local Pizza Co.</span>
                   </div>
                 </div>
                 <div id="pricing" className="rounded-[24px] border border-slate-200 bg-white p-7 shadow-[0_20px_70px_rgba(15,23,42,.075)]">
-                  <h3 className="text-xl font-black text-[#070A0F]">Ready to stop leaking revenue?</h3>
+                  <h3 className="text-xl font-black text-[#070A0F]">{"What You'll Unlock"}</h3>
                   <p className="mt-3 max-w-md text-sm leading-6 text-[#5E6673]">
-                    Join independent restaurant owners using DineLeak to grow smarter.
+                    Your Full Growth Report includes actionable AI insights designed to help attract more guests and increase revenue.
                   </p>
-                  <a href="#audit" className="group mt-5 inline-flex h-[52px] items-center justify-center gap-3 rounded-xl bg-[linear-gradient(135deg,#D7FF2F,#B8FF12)] px-6 text-sm font-black uppercase text-ink shadow-[0_16px_34px_rgba(184,255,18,.25)] transition hover:-translate-y-0.5">
-                    Run Your Free Leak Scan
-                    <ArrowRight className="transition group-hover:translate-x-1.5" size={19} />
-                  </a>
+                  <div className="mt-5 space-y-3">
+                    {[
+                      "AI-powered growth recommendations tailored to your restaurant",
+                      "Restaurant-specific social media and content ideas",
+                      "Revenue leak analysis with prioritized fixes",
+                      "Downloadable action plan and growth report",
+                    ].map((item) => (
+                      <div key={item} className="flex items-start gap-3 text-sm leading-6 text-[#253041]">
+                        <CheckCircle2 className="mt-0.5 shrink-0 text-[#A6EA00]" size={18} />
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-5 text-xs font-semibold tracking-[0.01em] text-[#5E6673]">
+                    One-time purchase • Instant access after checkout
+                  </p>
                 </div>
               </div>
             </div>
@@ -1023,17 +1035,17 @@ function RevenueLeakCard() {
       initial={{ opacity: 0, y: 22 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.12, duration: 0.7 }}
-      className="relative w-full min-w-0 max-w-[550px] justify-self-center overflow-hidden rounded-[24px] border border-[#B8FF12]/35 bg-[linear-gradient(145deg,rgba(15,22,30,.88),rgba(5,7,11,.94))] p-6 shadow-[0_0_42px_rgba(184,255,18,.12),0_30px_92px_rgba(0,0,0,.46)] backdrop-blur-xl lg:justify-self-end lg:p-8"
+      className="relative w-full min-w-0 max-w-[550px] justify-self-center overflow-hidden rounded-[24px] border border-[#B8FF12]/35 bg-[linear-gradient(145deg,rgba(15,22,30,.88),rgba(5,7,11,.94))] p-5 shadow-[0_0_42px_rgba(184,255,18,.12),0_30px_92px_rgba(0,0,0,.46)] backdrop-blur-xl lg:justify-self-end lg:p-7"
     >
       <div className="absolute -right-20 -top-20 size-72 rounded-full bg-[#B8FF12]/10 blur-3xl" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_15%,rgba(184,255,18,.08),transparent_30rem)]" />
       <div className="relative">
-        <div className="grid items-start gap-5 sm:grid-cols-[minmax(0,1fr)_176px]">
+        <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_176px]">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.09em] text-white/92">Preview Leak Score</p>
-            <h2 className="mt-5 text-[2.45rem] font-black leading-none tracking-[-0.06em] text-white sm:text-[2.85rem]">Preview</h2>
+            <h2 className="mt-4 text-[2.45rem] font-black leading-none tracking-[-0.06em] text-white sm:text-[2.85rem]">Preview</h2>
             <p className="mt-1 text-sm font-black uppercase tracking-[0.05em] text-[#B8FF12]">Preview only</p>
-            <div className="mt-4 inline-flex rounded-full border border-[#FF8A8A]/20 bg-[#FF8A8A]/10 px-4 py-2 text-xs font-black text-[#FF9A9A]">Example result</div>
+            <div className="mt-3 inline-flex rounded-full border border-[#FF8A8A]/20 bg-[#FF8A8A]/10 px-4 py-2 text-xs font-black text-[#FF9A9A]">Example result</div>
           </div>
           <div className="relative mx-auto grid size-40 place-items-center sm:size-44">
             <svg className="absolute inset-0 -rotate-[145deg]" viewBox="0 0 180 180" aria-hidden="true">
@@ -1059,9 +1071,9 @@ function RevenueLeakCard() {
           </div>
         </div>
 
-        <div className="mt-7 border-t border-white/[0.075] pt-5">
+        <div className="mt-6 border-t border-white/[0.075] pt-4">
           <p className="mb-4 text-xs font-black uppercase tracking-[0.12em] text-white/92">Top Leaks Found</p>
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {leaks.map(([label, loss]) => (
               <div key={label} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.075] bg-black/24 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.035)]">
                 <div className="flex min-w-0 items-center gap-3">
@@ -1076,7 +1088,7 @@ function RevenueLeakCard() {
           </div>
         </div>
 
-        <button type="button" className="group mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.075] bg-white/[0.055] px-5 py-4 text-sm font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,.05)] transition hover:border-[#B8FF12]/35 hover:bg-[#B8FF12]/[0.08]">
+        <button type="button" className="group mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.075] bg-white/[0.055] px-5 py-4 text-sm font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,.05)] transition hover:border-[#B8FF12]/35 hover:bg-[#B8FF12]/[0.08]">
           View full report
           <ArrowRight className="transition group-hover:translate-x-1" size={17} />
         </button>

@@ -22,11 +22,12 @@ export default async function SuccessPage({
   const params = (await searchParams) ?? {};
   const planId = params.plan === "starter" || params.plan === "pro" ? params.plan : "report";
   const isReportPurchase = planId === "report";
+  const reportHomeHref = isReportPurchase && params.session_id ? `/?report=full&session_id=${encodeURIComponent(params.session_id)}` : "/";
 
   const includedItems =
     planId === "report"
       ? ["AI revenue audit report", "Revenue leakage dashboard", "Competitor benchmark", "30-day action plan"]
-      : ["Website scans", "Google visibility checks", "Review sentiment", "Mobile insights"];
+      : ["Monthly AI scans", "Saved report history", "View reports by email", "Downloadable reports"];
 
   const monitoringFrequency = planId === "pro" ? "Every 7 days" : "Every 30 days";
 
@@ -43,20 +44,20 @@ export default async function SuccessPage({
                 {isReportPurchase ? "Purchase successful" : "Monitoring activated"}
               </p>
               <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">
-                {isReportPurchase ? "Your Premium AI Growth Report is ready" : "Your subscription is live"}
+                {isReportPurchase ? "Your Premium AI Growth Report is unlocking" : "Monitoring activated"}
               </h1>
               <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/68 sm:text-base lg:mx-0">
                 {isReportPurchase
-                  ? "Your premium AI revenue audit report is ready now. Open the homepage to view the unlocked report and keep the access on this device."
-                  : "Your paid monitoring plan is active. DineLeak will keep scanning on the selected cadence and save new results as they arrive."}
+                  ? "Stripe payment succeeded. We’re confirming the purchase record now, then you can open the full report below."
+                  : "Your DineLeak Monitor subscription is active. We’ll run recurring AI scans for your restaurant and save your reports."}
               </p>
             </div>
             <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-4 text-sm text-white/74 lg:min-w-[260px]">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-lime">What happens next</p>
               <ul className="mt-3 space-y-2 leading-6">
                 <li>• {isReportPurchase ? "Your report opens from the homepage." : "Your monitoring record is stored in DineLeak’s database."}</li>
-                <li>• {isReportPurchase ? "You can revisit the unlocked report anytime on this device." : `Scans run ${monitoringFrequency.toLowerCase()}.`}</li>
-                <li>• {isReportPurchase ? "Support is available if anything looks off." : "New findings will appear after each scheduled scan."}</li>
+                <li>• {isReportPurchase ? "The unlock stays on this device after verification." : `Scans run ${monitoringFrequency.toLowerCase()}.`}</li>
+                <li>• {isReportPurchase ? "Support is available if anything looks off." : "Use View My Reports to open your saved scan history."}</li>
               </ul>
             </div>
           </div>
@@ -87,12 +88,10 @@ export default async function SuccessPage({
             <div className="mt-5 space-y-4 text-sm leading-7 text-white/72">
               <p>
                 {isReportPurchase
-                  ? "Your Full Growth report unlock is tied to this purchase and can be reopened from the homepage."
-                  : `Monitoring frequency: ${monitoringFrequency}. Reports and alerts are generated from available website data and connected sources.`}
+                  ? "Your Full Growth report unlock is tied to this purchase and can be reopened from the homepage after verification."
+                  : `Monitoring frequency: ${monitoringFrequency}. Your saved reports are available by email lookup on the reports page using the same email you entered at checkout.`}
               </p>
-              <p>
-                Where reports appear: {isReportPurchase ? "on the homepage immediately after checkout" : "inside your DineLeak monitoring history after each scan completes"}.
-              </p>
+              <p>Where reports appear: {isReportPurchase ? "on the unlocked homepage and inside the full report" : "on the reports page after each scan completes"}.</p>
               <p>
                 Support email:{" "}
                 <a href="mailto:dineleak@gmail.com" className="text-lime transition hover:text-white">
@@ -107,11 +106,11 @@ export default async function SuccessPage({
           <p className="text-xs font-black uppercase tracking-[0.18em] text-lime">Next step</p>
           <h2 className="mt-3 text-2xl font-black text-white">Head back to DineLeak</h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/68">
-            Open the homepage to continue using DineLeak. If you just bought a report, the unlock stays active on this device. If you bought monitoring, the subscription is already active and waiting for the next scan.
+            Open the homepage to continue using DineLeak. If you just bought a report, the unlock stays active on this device after verification. If you bought monitoring, your reports are available by email lookup on the reports page using the same email you entered at checkout.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Link
-              href="/"
+              href={reportHomeHref}
               className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#D7FF2F,#A7FF00)] px-5 py-4 text-sm font-black uppercase text-ink shadow-[0_0_42px_rgba(198,255,0,.28)] transition hover:-translate-y-0.5"
             >
               Go to homepage

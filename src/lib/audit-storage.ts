@@ -243,6 +243,34 @@ export async function findLatestAuditRunBySubscriptionId(subscriptionId: string)
   };
 }
 
+export async function listAuditRunsBySubscriptionId(subscriptionId: string, limit = 12): Promise<StoredAuditRun[]> {
+  const sql = getSql();
+  if (!sql) return [];
+
+  await ensureSchema();
+  const rows = await sql`
+    SELECT *
+    FROM dineintel_audits
+    WHERE subscription_id = ${subscriptionId}
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `;
+
+  return rows.map((row) => ({
+    auditId: row.audit_id,
+    subscriptionId: row.subscription_id,
+    scanType: (row.scan_type as "one_time" | "recurring") ?? "one_time",
+    monitoringPlan: (row.monitoring_plan as "starter" | "pro" | null) ?? null,
+    previousAuditId: row.previous_audit_id ?? null,
+    restaurantName: row.restaurant_name,
+    restaurantWebsite: row.restaurant_website,
+    createdAt: row.created_at,
+    generatedBy: row.generated_by,
+    snapshot: row.website_snapshot_json as WebsiteAuditSnapshot,
+    result: row.result_json as AuditResult,
+  }));
+}
+
 export async function findLatestAuditRunByRestaurant(restaurantName: string, restaurantWebsite: string): Promise<StoredAuditRun | null> {
   const sql = getSql();
   if (!sql) return null;
