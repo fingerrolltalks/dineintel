@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Suspense } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { SiteFooter } from "@/components/SiteFooter";
 import { GA_MEASUREMENT_ID, isGoogleAnalyticsEnabled } from "@/lib/analytics";
@@ -83,6 +84,7 @@ export default function RootLayout({
         <Script id="website-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
         {children}
         <SiteFooter />
+        <Analytics />
         {isGoogleAnalyticsEnabled() ? (
         <>
           <Script
