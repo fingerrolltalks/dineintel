@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { buildInvoicePurchaseRecord, buildPurchaseRecord, claimStripeEvent, recordStripePurchase } from "@/lib/stripe-purchase-log";
 import { getStripe } from "@/lib/stripe";
+import { upsertMonitoringSubscriptionFromStripeSubscription } from "@/lib/monitoring-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,15 +38,6 @@ export async function POST(request: Request) {
     id: event.id,
   });
 
-  const claimed = await claimStripeEvent(event.id, event.type);
-  if (!claimed) {
-    console.info("[dineleak] stripe webhook duplicate ignored", {
-      type: event.type,
-      id: event.id,
-    });
-    return NextResponse.json({ received: true, duplicate: true });
-  }
-
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
@@ -60,6 +52,15 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error("[dineleak] stripe webhook record error", error);
       return NextResponse.json({ error: "Failed to record purchase." }, { status: 500 });
+    }
+
+    const claimed = await claimStripeEvent(event.id, event.type);
+    if (!claimed) {
+      console.info("[dineleak] stripe webhook duplicate ignored after record", {
+        type: event.type,
+        id: event.id,
+      });
+      return NextResponse.json({ received: true, duplicate: true });
     }
   } else if (event.type === "invoice.paid") {
     const invoice = event.data.object as Stripe.Invoice;
@@ -79,6 +80,36 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error("[dineleak] stripe invoice webhook record error", error);
       return NextResponse.json({ error: "Failed to record subscription payment." }, { status: 500 });
+    }
+
+    const claimed = await claimStripeEvent(event.id, event.type);
+    if (!claimed) {
+      console.info("[dineleak] stripe webhook duplicate ignored after record", {
+        type: event.type,
+        id: event.id,
+      });
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+  } else if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") {
+    const subscription = event.data.object as Stripe.Subscription;
+
+    try {
+      const fullSubscription = await stripe.subscriptions.retrieve(subscription.id, {
+        expand: ["items.data.price"],
+      });
+      await upsertMonitoringSubscriptionFromStripeSubscription(fullSubscription);
+    } catch (error) {
+      console.error("[dineleak] stripe subscription webhook record error", error);
+      return NextResponse.json({ error: "Failed to sync subscription." }, { status: 500 });
+    }
+
+    const claimed = await claimStripeEvent(event.id, event.type);
+    if (!claimed) {
+      console.info("[dineleak] stripe webhook duplicate ignored after record", {
+        type: event.type,
+        id: event.id,
+      });
+      return NextResponse.json({ received: true, duplicate: true });
     }
   } else {
     console.info("[dineleak] stripe webhook ignored", {

@@ -1,3 +1,4 @@
+import type Stripe from "stripe";
 import { getSql, requireSql } from "@/lib/database";
 import type { StripePurchaseRecord } from "@/lib/stripe-purchase-log";
 
@@ -177,6 +178,125 @@ export async function upsertMonitoringSubscriptionFromPurchase(record: StripePur
       NULL,
       NULL,
       ${record.paymentStatus ?? "active"},
+      true,
+      0,
+      0,
+      NULL,
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT (subscription_id) DO UPDATE SET
+      product_type = EXCLUDED.product_type,
+      price_id = EXCLUDED.price_id,
+      customer_email = EXCLUDED.customer_email,
+      customer_email_norm = EXCLUDED.customer_email_norm,
+      restaurant_name = EXCLUDED.restaurant_name,
+      restaurant_name_norm = EXCLUDED.restaurant_name_norm,
+      restaurant_website = EXCLUDED.restaurant_website,
+      restaurant_website_norm = EXCLUDED.restaurant_website_norm,
+      restaurant_social = EXCLUDED.restaurant_social,
+      restaurant_instagram = EXCLUDED.restaurant_instagram,
+      restaurant_tiktok = EXCLUDED.restaurant_tiktok,
+      cuisine = EXCLUDED.cuisine,
+      city = EXCLUDED.city,
+      interval_days = EXCLUDED.interval_days,
+      next_scan_at = CASE
+        WHEN dineintel_monitoring_subscriptions.interval_days IS DISTINCT FROM EXCLUDED.interval_days
+          THEN EXCLUDED.next_scan_at
+        ELSE COALESCE(dineintel_monitoring_subscriptions.next_scan_at, EXCLUDED.next_scan_at)
+      END,
+      active = true,
+      stripe_status = EXCLUDED.stripe_status,
+      retry_count = 0,
+      updated_at = NOW()
+    RETURNING *
+  `;
+
+  return row ? toMonitoringSubscription(row as Record<string, unknown>) : null;
+}
+
+export async function upsertMonitoringSubscriptionFromStripeSubscription(subscription: Stripe.Subscription) {
+  const metadata = subscription.metadata ?? {};
+  const productType = metadata.selected_product_type as MonitoringPlan | undefined;
+  if (!productType || !["starter", "pro"].includes(productType)) {
+    return null;
+  }
+
+  if (!["active", "trialing"].includes(subscription.status)) {
+    await setRecurringSubscriptionInactive({
+      subscriptionId: subscription.id,
+      stripeStatus: subscription.status,
+    });
+    return null;
+  }
+
+  const firstItem = subscription.items.data[0];
+  const price = firstItem?.price ?? null;
+  const priceId = typeof price === "string" ? price : price?.id ?? null;
+  const customerEmail = typeof metadata.customer_email === "string" ? metadata.customer_email : null;
+  const restaurantName = typeof metadata.restaurant_name === "string" ? metadata.restaurant_name : null;
+  const restaurantWebsite = typeof metadata.restaurant_website === "string" ? metadata.restaurant_website : null;
+  const restaurantSocial = typeof metadata.restaurant_social === "string" ? metadata.restaurant_social : null;
+  const restaurantInstagram = typeof metadata.restaurant_instagram === "string" ? metadata.restaurant_instagram : null;
+  const restaurantTikTok = typeof metadata.restaurant_tiktok === "string" ? metadata.restaurant_tiktok : null;
+  const cuisine = typeof metadata.restaurant_cuisine === "string" ? metadata.restaurant_cuisine : null;
+  const city = typeof metadata.restaurant_city === "string" ? metadata.restaurant_city : null;
+  const sql = requireSql("creating recurring monitoring subscriptions");
+  if (!sql) return null;
+
+  await ensureSchema();
+
+  const nextScanAt = new Date(Date.now() + planIntervalDays(productType) * 24 * 60 * 60 * 1000).toISOString();
+  const [row] = await sql`
+    INSERT INTO dineintel_monitoring_subscriptions (
+      subscription_id,
+      product_type,
+      price_id,
+      customer_email,
+      customer_email_norm,
+      restaurant_name,
+      restaurant_name_norm,
+      restaurant_website,
+      restaurant_website_norm,
+      restaurant_social,
+      restaurant_instagram,
+      restaurant_tiktok,
+      cuisine,
+      city,
+      interval_days,
+      next_scan_at,
+      last_scan_at,
+      last_attempt_at,
+      last_audit_id,
+      stripe_status,
+      active,
+      scan_count,
+      retry_count,
+      last_error,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${subscription.id},
+      ${productType},
+      ${priceId},
+      ${customerEmail},
+      ${normalize(customerEmail)},
+      ${restaurantName},
+      ${normalize(restaurantName)},
+      ${restaurantWebsite},
+      ${normalizeUrl(restaurantWebsite)},
+      ${restaurantSocial},
+      ${restaurantInstagram},
+      ${restaurantTikTok},
+      ${cuisine},
+      ${city},
+      ${planIntervalDays(productType)},
+      ${nextScanAt},
+      NULL,
+      NULL,
+      NULL,
+      ${subscription.status},
       true,
       0,
       0,
