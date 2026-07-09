@@ -94,8 +94,8 @@ export default async function SuccessPage({
               <p>Where reports appear: {isReportPurchase ? "on the unlocked homepage and inside the full report" : "on the reports page after each scan completes"}.</p>
               <p>
                 Support email:{" "}
-                <a href="mailto:dineleak@gmail.com" className="text-lime transition hover:text-white">
-                  dineleak@gmail.com
+                <a href="mailto:support.omnirise@gmail.com" className="text-lime transition hover:text-white">
+                  support.omnirise@gmail.com
                 </a>
               </p>
             </div>

@@ -158,7 +158,7 @@ export function PostPurchaseActivation({
       : plan;
   const isMonitoring = planId === "starter" || planId === "pro";
   const monitoring = status?.monitoring;
-  const errorMessage = "Payment received, but we could not unlock your access yet. Please contact support at dineleak@gmail.com.";
+  const errorMessage = "Payment received, but we could not unlock your access yet. Please contact support at support.omnirise@gmail.com.";
   const activationMessage =
     planId === "report"
       ? reportUnlocked
@@ -220,7 +220,7 @@ export function PostPurchaseActivation({
       </p>
 
       <p className="mt-3 text-xs font-medium uppercase tracking-[0.14em] text-white/42">
-        Support: <a href="mailto:dineleak@gmail.com" className="text-lime transition hover:text-white">dineleak@gmail.com</a>
+        Support: <a href="mailto:support.omnirise@gmail.com" className="text-lime transition hover:text-white">support.omnirise@gmail.com</a>
       </p>
     </section>
   );

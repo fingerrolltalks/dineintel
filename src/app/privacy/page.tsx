@@ -27,8 +27,8 @@ export default function PrivacyPage() {
       </p>
       <p>
         For help with privacy questions, contact{" "}
-        <a href="mailto:dineleak@gmail.com" className="text-lime transition hover:text-white">
-          dineleak@gmail.com
+        <a href="mailto:support.omnirise@gmail.com" className="text-lime transition hover:text-white">
+          support.omnirise@gmail.com
         </a>
         .
       </p>

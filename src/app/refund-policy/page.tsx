@@ -27,8 +27,8 @@ export default function RefundPolicyPage() {
       </p>
       <p>
         For refund questions, email{" "}
-        <a href="mailto:dineleak@gmail.com" className="text-lime transition hover:text-white">
-          dineleak@gmail.com
+        <a href="mailto:support.omnirise@gmail.com" className="text-lime transition hover:text-white">
+          support.omnirise@gmail.com
         </a>
         .
       </p>
